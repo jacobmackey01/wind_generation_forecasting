@@ -1,0 +1,204 @@
+"""Reporting and figure generation."""
+
+from __future__ import annotations
+
+from pathlib import Path
+import math
+
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
+from wind_forecast.features import TARGET
+from wind_forecast.qa import markdown_table
+
+
+def _fmt(value: float, digits: int = 2) -> str:
+    return f"{float(value):,.{digits}f}"
+
+
+def _newey_west_t_stat(loss_diff: pd.Series, max_lag: int = 24) -> float:
+    """Return a simple Newey-West t-stat for mean loss differential."""
+
+    values = loss_diff.dropna().to_numpy(dtype=float)
+    n = len(values)
+    if n < 3:
+        return float("nan")
+
+    mean = float(values.mean())
+    centered = values - mean
+    long_run_var = float(np.mean(centered**2))
+    for lag in range(1, min(max_lag, n - 1) + 1):
+        covariance = float(np.mean(centered[lag:] * centered[:-lag]))
+        long_run_var += 2.0 * (1.0 - lag / (max_lag + 1.0)) * covariance
+
+    if long_run_var <= 0:
+        return float("nan")
+    return mean / math.sqrt(long_run_var / n)
+
+
+def _fold_month(row: pd.Series) -> str:
+    return pd.to_datetime(row["fold_start"]).strftime("%b %Y")
+
+
+def write_figures(
+    predictions: pd.DataFrame,
+    fold_metrics: pd.DataFrame,
+    feature_importance: pd.DataFrame,
+    figures_dir: Path,
+) -> None:
+    figures_dir.mkdir(parents=True, exist_ok=True)
+    plt.style.use("seaborn-v0_8-whitegrid")
+
+    latest_fold = int(predictions["fold"].max())
+    latest = predictions[predictions["fold"] == latest_fold].tail(14 * 24)
+    fig, ax = plt.subplots(figsize=(12, 5))
+    ax.plot(latest["timestamp_utc"], latest[TARGET], label="Actual", linewidth=2.0)
+    ax.plot(latest["timestamp_utc"], latest["smard_forecast"], label="SMARD forecast", linewidth=1.5)
+    ax.plot(latest["timestamp_utc"], latest["xgboost_residual"], label="XGBoost", linewidth=1.5)
+    ax.set_title("Latest Walk-Forward Fold: Actual vs Forecast")
+    ax.set_ylabel("MW")
+    ax.legend()
+    fig.autofmt_xdate()
+    fig.tight_layout()
+    fig.savefig(figures_dir / "actual_vs_predicted_latest_fold.png", dpi=160)
+    plt.close(fig)
+
+    mae = fold_metrics[fold_metrics["model"].isin(["smard_forecast", "xgboost_residual"])].copy()
+    fig, ax = plt.subplots(figsize=(10, 5))
+    for model_name, frame in mae.groupby("model"):
+        label = "SMARD forecast" if model_name == "smard_forecast" else "XGBoost"
+        ax.plot(frame["fold"], frame["mae"], marker="o", label=label)
+    ax.set_title("Walk-Forward MAE By Fold")
+    ax.set_xlabel("Fold")
+    ax.set_ylabel("MAE (MW)")
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(figures_dir / "walk_forward_mae.png", dpi=160)
+    plt.close(fig)
+
+    top = feature_importance.head(20).sort_values("importance_mean", ascending=True)
+    fig, ax = plt.subplots(figsize=(10, 7))
+    ax.barh(top["feature"], top["importance_mean"], color="#4c78a8")
+    ax.set_title("XGBoost Feature Importance")
+    ax.set_xlabel("Mean importance across folds")
+    fig.tight_layout()
+    fig.savefig(figures_dir / "feature_importance.png", dpi=160)
+    plt.close(fig)
+
+
+def write_case_study(
+    dataset: pd.DataFrame,
+    qa_summary: dict[str, object],
+    metrics: pd.DataFrame,
+    fold_metrics: pd.DataFrame,
+    predictions: pd.DataFrame,
+    feature_importance: pd.DataFrame,
+    path: Path,
+) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    smard_row = metrics.loc[metrics["model"] == "smard_forecast"].iloc[0]
+    xgb_row = metrics.loc[metrics["model"] == "xgboost_residual"].iloc[0]
+    persistence_row = metrics.loc[metrics["model"] == "persistence_prev_week"].iloc[0]
+    climatology_row = metrics.loc[metrics["model"] == "hour_month_climatology"].iloc[0]
+    skill = float(xgb_row["skill_vs_smard_mae_pct"])
+    xgb_fold_metrics = fold_metrics[fold_metrics["model"] == "xgboost_residual"].copy()
+    fold_skill_mean = float(xgb_fold_metrics["skill_vs_smard_mae_pct"].mean())
+    fold_wins = int((xgb_fold_metrics["skill_vs_smard_mae_pct"] > 0).sum())
+    fold_count = int(len(xgb_fold_metrics))
+
+    if abs(skill) < 2:
+        skill_sentence = (
+            f"XGBoost does not show a reliable edge over the SMARD forecast in this backtest: pooled MAE is only "
+            f"{_fmt(skill, 2)}% better, while average fold skill is {_fmt(fold_skill_mean, 2)}%."
+        )
+    elif skill > 0:
+        skill_sentence = (
+            f"XGBoost improved pooled MAE versus SMARD by {_fmt(skill, 1)}%, but fold stability still matters more than the pooled headline."
+        )
+    else:
+        skill_sentence = (
+            f"XGBoost trailed the SMARD forecast by {_fmt(abs(skill), 1)}% MAE, which is useful negative evidence."
+        )
+
+    worst_skill_fold = xgb_fold_metrics.sort_values("skill_vs_smard_mae_pct", ascending=True).iloc[0]
+    best_skill_fold = xgb_fold_metrics.sort_values("skill_vs_smard_mae_pct", ascending=False).iloc[0]
+    first_fold_start = str(xgb_fold_metrics["fold_start"].iloc[0])
+    last_fold_end = str(xgb_fold_metrics["fold_end"].iloc[-1])
+    smard_abs_error = (predictions[TARGET] - predictions["smard_forecast"]).abs()
+    xgb_abs_error = (predictions[TARGET] - predictions["xgboost_residual"]).abs()
+    loss_diff_t = _newey_west_t_stat(smard_abs_error - xgb_abs_error, max_lag=24)
+
+    metrics_for_doc = metrics.copy()
+    for column in ["mae", "rmse", "bias", "skill_vs_smard_mae_pct"]:
+        metrics_for_doc[column] = metrics_for_doc[column].map(lambda x: _fmt(x, 2))
+
+    top_features = feature_importance.head(10).copy()
+    top_features["importance_mean"] = top_features["importance_mean"].map(lambda x: _fmt(x, 4))
+    top_features["importance_std"] = top_features["importance_std"].fillna(0).map(lambda x: _fmt(x, 4))
+
+    lines = [
+        "# Germany Wind Generation Forecasting Case Study",
+        "",
+        "Jacob Mackey",
+        "",
+        "## Objective",
+        "",
+        "Build a clean, trading-relevant forecasting pipeline for German hourly wind generation. The model predicts actual onshore plus offshore wind generation and is evaluated against simple and market-relevant baselines using walk-forward validation.",
+        "",
+        "The intended use case is rolling 24-hour-ahead calibration of the public wind forecast. The information set is published forecasts plus observations and forecast errors that are at least 24 hours old relative to delivery. At true prompt or intraday horizons, recent metered actuals become available and a last-observation style benchmark would dominate this feature set.",
+        "",
+        "## Data",
+        "",
+        f"Sample: {qa_summary['start']} to {qa_summary['end']} UTC, {qa_summary['rows']} hourly rows.",
+        "",
+        "- SMARD / Bundesnetzagentur: actual wind generation and published wind generation forecasts for Germany.",
+        "- Open-Meteo Historical Forecast API: archived forecast-model weather covariates at four representative German wind locations.",
+        "",
+        f"QA passed: {qa_summary['passed']}. Checks cover timestamp uniqueness/continuity, local power-day hour counts, missing values, and plausible generation/weather ranges.",
+        "",
+        "## Features",
+        "",
+        "The feature set includes SMARD wind forecast levels and ramps, previous-day and previous-week actual wind lags, rolling means, lagged forecast errors, calendar seasonality, and weather forecast variables such as 100m wind speed/direction, gusts, temperature, and pressure.",
+        "",
+        "## Models And Validation",
+        "",
+        f"Baselines are previous-week same-hour persistence, train-fold hour/month climatology, and the SMARD published wind forecast. The improved model is an XGBoost residual calibrator: it predicts actual minus SMARD forecast, then adds the correction back to the SMARD baseline. Validation uses expanding walk-forward folds from {first_fold_start} to {last_fold_end}, not a random split.",
+        "",
+        markdown_table(metrics_for_doc),
+        "",
+        "## Interpretation",
+        "",
+        skill_sentence,
+        "",
+        f"A simple Newey-West lag-24 t-stat on the hourly absolute-error loss differential is {_fmt(loss_diff_t, 2)}. This is included only as a sanity check, but it supports the same conclusion: the observed pooled improvement is noise, not a statistically robust edge.",
+        "",
+        f"The previous-week persistence MAE was {_fmt(persistence_row['mae'])} MW and the hour/month climatology MAE was {_fmt(climatology_row['mae'])} MW. The serious benchmark is SMARD: MAE {_fmt(smard_row['mae'])} MW versus XGBoost {_fmt(xgb_row['mae'])} MW. XGBoost beat SMARD in {fold_wins} of {fold_count} folds, but the fold dispersion is large enough that I would not claim a production edge from this evidence alone.",
+        "",
+        f"Bias is also worth watching. SMARD bias was {_fmt(smard_row['bias'])} MW and XGBoost bias was {_fmt(xgb_row['bias'])} MW overall, but several folds show over-correction. The strongest relative fold was fold {int(best_skill_fold['fold'])} ({_fold_month(best_skill_fold)}), where XGBoost improved MAE versus SMARD by {_fmt(best_skill_fold['skill_vs_smard_mae_pct'], 1)}%. The weakest relative fold was fold {int(worst_skill_fold['fold'])} ({_fold_month(worst_skill_fold)}), where XGBoost lost by {_fmt(abs(worst_skill_fold['skill_vs_smard_mae_pct']), 1)}%. That October failure is the clearest stress case in the backtest and should be investigated around sharp ramps, storm regimes, curtailment/congestion, or weather-regime changes where lagged errors stop being stable.",
+        "",
+        "## Top Features",
+        "",
+        markdown_table(top_features[["feature", "importance_mean", "importance_std"]]),
+        "",
+        "## How This Would Be Used",
+        "",
+        "For trading or dispatch analysis, the useful signal is the rolling 24-hour-ahead calibrated deviation from the public wind forecast. A positive model residual says actual wind is expected above the published forecast, which is bearish for residual load and power prices all else equal. A negative residual says the opposite. The signal should be invalidated or down-weighted when fresh TSO/weather updates materially change the forecast, when observed wind errors diverge from lagged error patterns, or when grid constraints/curtailment dominate weather-driven production.",
+        "",
+        "## Limitations",
+        "",
+        "The validation now spans summer, autumn, winter, and spring folds, but it is still only one annual cycle. I would not treat the result as seasonally robust until it is repeated over multiple years and distinct weather regimes.",
+        "",
+        "The current feature set is valid for a rolling 24-hour-ahead information set. It is not a true prompt/intraday model; once recent metered actuals are available, a previous-hour persistence benchmark should be tested and would likely be hard to beat. For a strict D-1 noon forecast, all lagged features should be recomputed relative to the issue timestamp.",
+        "",
+        "The XGBoost hyperparameters were kept fixed for the reported rerun, but they were chosen during prototyping on this same history. A production study should tune on a separate period or use nested time-series validation.",
+        "",
+        "Overall, this should be read as a validation-first prototype rather than a production signal. The pipeline demonstrates the right data QA, walk-forward discipline, and benchmark framing, but a deployable version would need a longer multi-year backtest, forecast-run/lead-time pinned weather inputs, explicit issue-time feature cuts, regional generation constraints, and hyperparameter tuning isolated from the evaluation window.",
+        "",
+    ]
+
+    path.write_text("\n".join(lines), encoding="utf-8")
