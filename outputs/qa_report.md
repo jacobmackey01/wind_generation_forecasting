@@ -1,0 +1,58 @@
+# QA Report
+
+Start: 2024-12-31 23:00:00+00:00
+End: 2026-05-31 21:00:00+00:00
+Local power-day start: 2025-01-01
+Local power-day end: 2026-05-31
+Rows: 12383
+Overall pass: True
+
+| check | value | passed |
+| --- | --- | --- |
+| row_count_gt_90_days | 12383 | True |
+| timestamp_unique | True | True |
+| timestamp_monotonic | True | True |
+| missing_utc_hours | 0 | True |
+| missing_actual_wind_onshore_mw | 0 | True |
+| missing_actual_wind_offshore_mw | 0 | True |
+| missing_actual_wind_total_mw | 0 | True |
+| missing_forecast_wind_onshore_mw | 0 | True |
+| missing_forecast_wind_offshore_mw | 0 | True |
+| missing_forecast_wind_total_mw | 0 | True |
+| missing_north_sea_wind_speed_100m_ms | 0 | True |
+| missing_north_sea_wind_direction_100m_deg | 0 | True |
+| missing_north_sea_wind_gusts_10m_ms | 0 | True |
+| missing_north_sea_temperature_2m_c | 0 | True |
+| missing_north_sea_pressure_msl_hpa | 0 | True |
+| missing_schleswig_holstein_wind_speed_100m_ms | 0 | True |
+| missing_schleswig_holstein_wind_direction_100m_deg | 0 | True |
+| missing_schleswig_holstein_wind_gusts_10m_ms | 0 | True |
+| missing_schleswig_holstein_temperature_2m_c | 0 | True |
+| missing_schleswig_holstein_pressure_msl_hpa | 0 | True |
+| missing_lower_saxony_wind_speed_100m_ms | 0 | True |
+| missing_lower_saxony_wind_direction_100m_deg | 0 | True |
+| missing_lower_saxony_wind_gusts_10m_ms | 0 | True |
+| missing_lower_saxony_temperature_2m_c | 0 | True |
+| missing_lower_saxony_pressure_msl_hpa | 0 | True |
+| missing_brandenburg_wind_speed_100m_ms | 0 | True |
+| missing_brandenburg_wind_direction_100m_deg | 0 | True |
+| missing_brandenburg_wind_gusts_10m_ms | 0 | True |
+| missing_brandenburg_temperature_2m_c | 0 | True |
+| missing_brandenburg_pressure_msl_hpa | 0 | True |
+| bad_local_power_day_hour_counts | 0 | True |
+| actual_wind_onshore_mw_non_negative | 197.5 | True |
+| actual_wind_onshore_mw_below_100gw | 46140.31 | True |
+| actual_wind_offshore_mw_non_negative | 0.0 | True |
+| actual_wind_offshore_mw_below_100gw | 8448.34 | True |
+| actual_wind_total_mw_non_negative | 334.42 | True |
+| actual_wind_total_mw_below_100gw | 53227.88 | True |
+| forecast_wind_onshore_mw_non_negative | 206.0 | True |
+| forecast_wind_onshore_mw_below_100gw | 46758.44 | True |
+| forecast_wind_offshore_mw_non_negative | 13.0 | True |
+| forecast_wind_offshore_mw_below_100gw | 7344.19 | True |
+| forecast_wind_total_mw_non_negative | 422.77 | True |
+| forecast_wind_total_mw_below_100gw | 52330.94 | True |
+| north_sea_wind_speed_100m_ms_plausible_max | 31.15 | True |
+| schleswig_holstein_wind_speed_100m_ms_plausible_max | 22.04 | True |
+| lower_saxony_wind_speed_100m_ms_plausible_max | 22.99 | True |
+| brandenburg_wind_speed_100m_ms_plausible_max | 27.53 | True |
