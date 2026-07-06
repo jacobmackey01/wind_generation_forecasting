@@ -5,10 +5,13 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from wind_forecast.features import SMARD_BASELINE, TARGET
+from wind_forecast.features import SMARD_BASELINE
 
 
 PRICE = "price_da_eur_mwh"
+FORECAST_RAMP = "forecast_wind_total_ramp_24h"
+RESIDUAL_STRATEGY = "xgboost_wind_residual_signal"
+PUBLIC_RAMP_STRATEGY = "public_smard_forecast_ramp_signal"
 
 
 def _metrics(frame: pd.DataFrame, label: str) -> dict[str, float | int | str]:
@@ -72,26 +75,59 @@ def build_trade_log(
     price_frame["price_lag_24h"] = price_frame[PRICE].shift(24)
 
     out = predictions.merge(price_frame, on="timestamp_utc", how="left")
+    out["strategy"] = RESIDUAL_STRATEGY
     out["wind_edge_mw"] = out["xgboost_residual"] - out[SMARD_BASELINE]
+    out["signal_mw"] = out["wind_edge_mw"]
     out["price_surprise_eur_mwh"] = out[PRICE] - out["price_lag_24h"]
-    out["position"] = _position_from_edge(out["wind_edge_mw"], threshold_mw)
+    out["position"] = _position_from_edge(out["signal_mw"], threshold_mw)
     out["gross_pnl_eur_mwh"] = out["position"] * out["price_surprise_eur_mwh"]
     out["transaction_cost_eur_mwh"] = np.where(out["position"] != 0, transaction_cost_eur_mwh, 0.0)
     out["net_pnl_eur_mwh"] = out["gross_pnl_eur_mwh"] - out["transaction_cost_eur_mwh"]
     out["hit"] = np.where(out["position"] != 0, out["gross_pnl_eur_mwh"] > 0, np.nan)
-    return out.dropna(subset=[PRICE, "price_lag_24h", "wind_edge_mw"]).reset_index(drop=True)
+    return out.dropna(subset=[PRICE, "price_lag_24h", "signal_mw"]).reset_index(drop=True)
+
+
+def build_public_forecast_ramp_trade_log(
+    feature_frame: pd.DataFrame,
+    predictions: pd.DataFrame,
+    *,
+    threshold_mw: float = 1500.0,
+    transaction_cost_eur_mwh: float = 0.5,
+) -> pd.DataFrame:
+    """Build a benchmark trade log using only the public SMARD forecast ramp."""
+
+    signal_frame = feature_frame[["timestamp_utc", PRICE, FORECAST_RAMP]].copy().sort_values("timestamp_utc")
+    signal_frame["price_lag_24h"] = signal_frame[PRICE].shift(24)
+    fold_frame = predictions[["timestamp_utc", "fold", "fold_start", "fold_end"]].copy()
+
+    out = fold_frame.merge(signal_frame, on="timestamp_utc", how="left")
+    out["strategy"] = PUBLIC_RAMP_STRATEGY
+    out["signal_mw"] = out[FORECAST_RAMP]
+    out["price_surprise_eur_mwh"] = out[PRICE] - out["price_lag_24h"]
+    out["position"] = _position_from_edge(out["signal_mw"], threshold_mw)
+    out["gross_pnl_eur_mwh"] = out["position"] * out["price_surprise_eur_mwh"]
+    out["transaction_cost_eur_mwh"] = np.where(out["position"] != 0, transaction_cost_eur_mwh, 0.0)
+    out["net_pnl_eur_mwh"] = out["gross_pnl_eur_mwh"] - out["transaction_cost_eur_mwh"]
+    out["hit"] = np.where(out["position"] != 0, out["gross_pnl_eur_mwh"] > 0, np.nan)
+    return out.dropna(subset=[PRICE, "price_lag_24h", "signal_mw"]).reset_index(drop=True)
 
 
 def summarize_strategy(trade_log: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
-    overall = pd.DataFrame([_metrics(trade_log, "xgboost_wind_residual_signal")])
+    if "strategy" not in trade_log.columns:
+        trade_log = trade_log.copy()
+        trade_log["strategy"] = RESIDUAL_STRATEGY
+
+    overall_rows = []
     fold_rows = []
-    for fold, frame in trade_log.groupby("fold", sort=True):
-        row = _metrics(frame, "xgboost_wind_residual_signal")
-        row["fold"] = int(fold)
-        row["fold_start"] = str(frame["fold_start"].iloc[0])
-        row["fold_end"] = str(frame["fold_end"].iloc[0])
-        fold_rows.append(row)
-    return overall, pd.DataFrame(fold_rows)
+    for strategy, strategy_frame in trade_log.groupby("strategy", sort=False):
+        overall_rows.append(_metrics(strategy_frame, str(strategy)))
+        for fold, frame in strategy_frame.groupby("fold", sort=True):
+            row = _metrics(frame, str(strategy))
+            row["fold"] = int(fold)
+            row["fold_start"] = str(frame["fold_start"].iloc[0])
+            row["fold_end"] = str(frame["fold_end"].iloc[0])
+            fold_rows.append(row)
+    return pd.DataFrame(overall_rows), pd.DataFrame(fold_rows)
 
 
 def threshold_sensitivity(
@@ -104,15 +140,23 @@ def threshold_sensitivity(
     thresholds_mw = thresholds_mw or [500.0, 1000.0, 1500.0, 2000.0, 3000.0]
     rows = []
     for threshold in thresholds_mw:
-        trades = build_trade_log(
+        residual_trades = build_trade_log(
             feature_frame,
             predictions,
             threshold_mw=threshold,
             transaction_cost_eur_mwh=transaction_cost_eur_mwh,
         )
-        row = _metrics(trades, "xgboost_wind_residual_signal")
-        row["threshold_mw"] = threshold
-        rows.append(row)
+        public_ramp_trades = build_public_forecast_ramp_trade_log(
+            feature_frame,
+            predictions,
+            threshold_mw=threshold,
+            transaction_cost_eur_mwh=transaction_cost_eur_mwh,
+        )
+        for trades in [residual_trades, public_ramp_trades]:
+            strategy = str(trades["strategy"].iloc[0])
+            row = _metrics(trades, strategy)
+            row["threshold_mw"] = threshold
+            rows.append(row)
     return pd.DataFrame(rows)
 
 
@@ -123,12 +167,20 @@ def backtest_wind_price_signal(
     threshold_mw: float = 1500.0,
     transaction_cost_eur_mwh: float = 0.5,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    trade_log = build_trade_log(
+    residual_trade_log = build_trade_log(
         feature_frame,
         predictions,
         threshold_mw=threshold_mw,
         transaction_cost_eur_mwh=transaction_cost_eur_mwh,
     )
+    public_ramp_trade_log = build_public_forecast_ramp_trade_log(
+        feature_frame,
+        predictions,
+        threshold_mw=threshold_mw,
+        transaction_cost_eur_mwh=transaction_cost_eur_mwh,
+    )
+    trade_log = pd.concat([residual_trade_log, public_ramp_trade_log], ignore_index=True, sort=False)
+    trade_log = trade_log.sort_values("timestamp_utc", kind="stable").reset_index(drop=True)
     metrics, fold_metrics = summarize_strategy(trade_log)
     sensitivity = threshold_sensitivity(
         feature_frame,

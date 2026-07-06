@@ -14,6 +14,7 @@ import pandas as pd
 
 from wind_forecast.features import TARGET
 from wind_forecast.qa import markdown_table
+from wind_forecast.strategy import PUBLIC_RAMP_STRATEGY, RESIDUAL_STRATEGY
 
 
 def _fmt(value: float, digits: int = 2) -> str:
@@ -146,27 +147,67 @@ def write_case_study(
 
     strategy_lines: list[str] = []
     if strategy_metrics is not None and not strategy_metrics.empty:
-        strategy_row = strategy_metrics.iloc[0]
-        strategy_read = (
-            "Read honestly, this is a weak research signal rather than a tradable edge: "
-            f"the 1.5 GW rule trades {_fmt(strategy_row['trade_rate'] * 100, 1)}% of hours, "
-            f"has a {_fmt(strategy_row['hit_rate'] * 100, 1)}% hit rate, "
-            f"earns {_fmt(strategy_row['avg_net_pnl_eur_mwh'], 3)} EUR/MWh after costs, "
-            f"and has a Sharpe-like score of only {_fmt(strategy_row['sharpe_like_per_trade'], 3)}."
+        residual_rows = strategy_metrics[strategy_metrics["strategy"] == RESIDUAL_STRATEGY]
+        public_rows = strategy_metrics[strategy_metrics["strategy"] == PUBLIC_RAMP_STRATEGY]
+        strategy_row = residual_rows.iloc[0] if not residual_rows.empty else strategy_metrics.iloc[0]
+        public_row = public_rows.iloc[0] if not public_rows.empty else None
+
+        weak_strategy = (
+            abs(float(strategy_row.get("hit_rate_z_stat", 0.0))) < 1.96
+            and abs(float(strategy_row.get("net_pnl_t_stat", 0.0))) < 1.96
         )
+        if weak_strategy:
+            strategy_read = (
+                "Read honestly, the residual strategy is a weak research signal rather than a tradable edge: "
+                f"the 1.5 GW rule trades {_fmt(strategy_row['trade_rate'] * 100, 1)}% of hours, "
+                f"has a {_fmt(strategy_row['hit_rate'] * 100, 1)}% gross hit rate, "
+                f"earns {_fmt(strategy_row['avg_net_pnl_eur_mwh'], 3)} EUR/MWh after costs, "
+                f"and has a Sharpe-like score of only {_fmt(strategy_row['sharpe_like_per_trade'], 3)}."
+            )
+        else:
+            strategy_read = (
+                "The residual strategy looks positive on the simple hourly statistics, but it still needs clustered and out-of-sample validation: "
+                f"the 1.5 GW rule trades {_fmt(strategy_row['trade_rate'] * 100, 1)}% of hours, "
+                f"has a {_fmt(strategy_row['hit_rate'] * 100, 1)}% gross hit rate, "
+                f"earns {_fmt(strategy_row['avg_net_pnl_eur_mwh'], 3)} EUR/MWh after costs, "
+                f"and has a Sharpe-like score of {_fmt(strategy_row['sharpe_like_per_trade'], 3)}."
+            )
+
+        benchmark_read = ""
+        if public_row is not None:
+            residual_total = float(strategy_row["total_net_pnl_eur_mwh"])
+            public_total = float(public_row["total_net_pnl_eur_mwh"])
+            delta = residual_total - public_total
+            if delta <= 0:
+                benchmark_read = (
+                    f" The public SMARD forecast-ramp benchmark earns {_fmt(public_total, 2)} EUR/MWh versus "
+                    f"{_fmt(residual_total, 2)} for the residual strategy, so the residual correction does not beat the public-only rule here."
+                )
+            else:
+                benchmark_read = (
+                    f" The residual strategy earns {_fmt(delta, 2)} EUR/MWh more than the public SMARD forecast-ramp benchmark, "
+                    "but the strategy statistics are too weak to call that an edge."
+                )
         significance_read = ""
         if {"hit_rate_z_stat", "net_pnl_t_stat"}.issubset(strategy_row.index):
-            significance_read = (
-                f" Simple strategy-side significance checks are also weak: unclustered hit-rate z-stat "
-                f"{_fmt(strategy_row['hit_rate_z_stat'], 2)} and per-trade net-P&L t-stat "
-                f"{_fmt(strategy_row['net_pnl_t_stat'], 2)}. Fold-level clustering would make this evidence weaker, not stronger."
-            )
+            if weak_strategy:
+                significance_read = (
+                    f" Simple strategy-side significance checks are also weak: unclustered gross-hit-rate z-stat "
+                    f"{_fmt(strategy_row['hit_rate_z_stat'], 2)} and per-trade net-P&L t-stat "
+                    f"{_fmt(strategy_row['net_pnl_t_stat'], 2)}. Fold-level clustering would make this evidence weaker, not stronger."
+                )
+            else:
+                significance_read = (
+                    f" Simple hourly statistics are gross-hit-rate z-stat {_fmt(strategy_row['hit_rate_z_stat'], 2)} "
+                    f"and per-trade net-P&L t-stat {_fmt(strategy_row['net_pnl_t_stat'], 2)}, before clustered adjustment."
+                )
         fold_read = ""
         if strategy_fold_metrics is not None and not strategy_fold_metrics.empty:
-            positive_folds = int((strategy_fold_metrics["total_net_pnl_eur_mwh"] > 0).sum())
-            strategy_fold_count = int(len(strategy_fold_metrics))
-            best_strategy_fold = strategy_fold_metrics.sort_values("total_net_pnl_eur_mwh", ascending=False).iloc[0]
-            worst_strategy_fold = strategy_fold_metrics.sort_values("total_net_pnl_eur_mwh", ascending=True).iloc[0]
+            strategy_fold_frame = strategy_fold_metrics[strategy_fold_metrics["strategy"] == strategy_row["strategy"]]
+            positive_folds = int((strategy_fold_frame["total_net_pnl_eur_mwh"] > 0).sum())
+            strategy_fold_count = int(len(strategy_fold_frame))
+            best_strategy_fold = strategy_fold_frame.sort_values("total_net_pnl_eur_mwh", ascending=False).iloc[0]
+            worst_strategy_fold = strategy_fold_frame.sort_values("total_net_pnl_eur_mwh", ascending=True).iloc[0]
             total_pnl = float(strategy_row["total_net_pnl_eur_mwh"])
             best_pnl = float(best_strategy_fold["total_net_pnl_eur_mwh"])
             total_ex_best = total_pnl - best_pnl
@@ -193,33 +234,46 @@ def write_case_study(
         ]:
             if column in strategy_doc.columns:
                 strategy_doc[column] = strategy_doc[column].map(lambda x: _fmt(x, 3) if pd.notna(x) else "")
+        strategy_doc = strategy_doc.rename(columns={"hit_rate": "gross_hit_rate"})
 
         threshold_doc = pd.DataFrame()
         if strategy_thresholds is not None and not strategy_thresholds.empty:
-            best_threshold = strategy_thresholds.sort_values("total_net_pnl_eur_mwh", ascending=False).iloc[0]
-            threshold_read = (
-                f"The best threshold in this small grid is {_fmt(best_threshold['threshold_mw'], 0)} MW, "
-                "but the high-confidence triggers reverse sharply, so the backtest supports further research rather than deployment."
-            )
+            residual_thresholds = strategy_thresholds[strategy_thresholds["strategy"] == strategy_row["strategy"]]
+            best_threshold = residual_thresholds.sort_values("total_net_pnl_eur_mwh", ascending=False).iloc[0]
+            best_threshold_t = float(best_threshold.get("net_pnl_t_stat", 0.0))
+            if abs(best_threshold_t) < 1.96:
+                threshold_read = (
+                    f"The best residual threshold in this five-point grid is {_fmt(best_threshold['threshold_mw'], 0)} MW, "
+                    f"but that is a multiple-testing maximum with unadjusted net-P&L t-stat {_fmt(best_threshold_t, 2)}, "
+                    "so it supports further research rather than deployment."
+                )
+            else:
+                threshold_read = (
+                    f"The best residual threshold in this five-point grid is {_fmt(best_threshold['threshold_mw'], 0)} MW, "
+                    f"with unadjusted net-P&L t-stat {_fmt(best_threshold_t, 2)}; it would still need holdout validation after threshold selection."
+                )
             threshold_doc = strategy_thresholds[
                 [
+                    "strategy",
                     "threshold_mw",
                     "trades",
                     "hit_rate",
                     "avg_net_pnl_eur_mwh",
                     "total_net_pnl_eur_mwh",
                     "sharpe_like_per_trade",
+                    "net_pnl_t_stat",
                 ]
             ].copy()
-            for column in ["hit_rate", "avg_net_pnl_eur_mwh", "total_net_pnl_eur_mwh", "sharpe_like_per_trade"]:
+            for column in ["hit_rate", "avg_net_pnl_eur_mwh", "total_net_pnl_eur_mwh", "sharpe_like_per_trade", "net_pnl_t_stat"]:
                 threshold_doc[column] = threshold_doc[column].map(lambda x: _fmt(x, 3) if pd.notna(x) else "")
+            threshold_doc = threshold_doc.rename(columns={"hit_rate": "gross_hit_rate"})
 
         strategy_lines = [
             "## Strategy Backtest",
             "",
-            "The strategy converts the wind residual into a paper price-surprise signal. If XGBoost forecasts wind at least 1.5 GW above the public SMARD forecast, the signal is short German day-ahead price; if it is at least 1.5 GW below, the signal is long. P&L is measured against a previous-day same-hour day-ahead price baseline with 0.5 EUR/MWh transaction cost.",
+            "The strategy converts the wind residual into a paper price-surprise signal. If XGBoost forecasts wind at least 1.5 GW above the public SMARD forecast, the signal is short German day-ahead price; if it is at least 1.5 GW below, the signal is long. The benchmark applies the same rule to the public SMARD 24-hour forecast ramp alone. P&L is measured against a previous-day same-hour day-ahead price baseline with 0.5 EUR/MWh transaction cost.",
             "",
-            "This is a research backtest, not an executable exchange P&L claim: the entry price is a transparent persistence proxy, not a historical traded forward quote. The goal is to test whether the wind residual contains directionally useful price information after costs.",
+            "This is a research backtest, not an executable exchange P&L claim: the entry price is a transparent persistence proxy, not a historical traded forward quote. Economically, a production version would monetize a forecast-error edge through day-ahead to intraday or imbalance settlement, not through DA(t) minus DA(t-24). The goal here is narrower: test whether the wind residual contains directionally useful price information beyond a public forecast-ramp rule after costs.",
             "",
             markdown_table(
                 strategy_doc[
@@ -228,7 +282,7 @@ def write_case_study(
                         "hours",
                         "trades",
                         "trade_rate",
-                        "hit_rate",
+                        "gross_hit_rate",
                         "avg_net_pnl_eur_mwh",
                         "total_net_pnl_eur_mwh",
                         "sharpe_like_per_trade",
@@ -238,7 +292,7 @@ def write_case_study(
                 ]
             ),
             "",
-            f"{strategy_read}{significance_read}{fold_read}",
+            f"{strategy_read}{benchmark_read}{significance_read}{fold_read}",
             "",
         ]
         if not threshold_doc.empty:
@@ -269,9 +323,10 @@ def write_case_study(
         f"Sample: {qa_summary['start']} to {qa_summary['end']} UTC, {qa_summary['rows']} hourly rows.",
         "",
         "- SMARD / Bundesnetzagentur: actual wind generation and published wind generation forecasts for Germany.",
+        "- SMARD / Bundesnetzagentur: German/Luxembourg day-ahead auction prices, series 4169, for the strategy research layer.",
         "- Open-Meteo Historical Forecast API: archived forecast-model weather covariates at four representative German wind locations.",
         "",
-        f"QA passed: {qa_summary['passed']}. Checks cover timestamp uniqueness/continuity, local power-day hour counts, missing values, and plausible generation/weather ranges.",
+        f"QA passed: {qa_summary['passed']}. Checks cover timestamp uniqueness/continuity, local power-day hour counts, missing values, and plausible generation, weather, and day-ahead price ranges.",
         "",
         "## Features",
         "",
@@ -306,11 +361,11 @@ def write_case_study(
         "",
         "The validation now spans summer, autumn, winter, and spring folds, but it is still only one annual cycle. I would not treat the result as seasonally robust until it is repeated over multiple years and distinct weather regimes.",
         "",
-        "The current feature set is valid for a rolling 24-hour-ahead information set. It is not a true prompt/intraday model; once recent metered actuals are available, a previous-hour persistence benchmark should be tested and would likely be hard to beat. It is also not a strict day-ahead auction signal: the German day-ahead auction clears around D-1 noon, so 24-hour lagged actuals would be unavailable for some later delivery hours. For a strict D-1 noon forecast, all lagged features should be recomputed relative to the issue timestamp.",
+        "The current feature set is valid for a rolling 24-hour-ahead information set. It is not a true prompt/intraday model; once recent metered actuals are available, a previous-hour persistence benchmark should be tested and would likely be hard to beat. It is also not a strict day-ahead auction signal: the German day-ahead auction clears around D-1 noon, so 24-hour lagged actuals would be unavailable for some later delivery hours. The weather covariates are archived near-delivery forecast values rather than D-1 noon model-run snapshots, so they should be treated as post-auction for strict day-ahead trading. For a strict D-1 noon forecast, all lagged features and weather rows should be recomputed relative to the issue timestamp.",
         "",
         "The XGBoost hyperparameters were kept fixed for the reported rerun, but they were chosen during prototyping on this same history. A production study should tune on a separate period or use nested time-series validation.",
         "",
-        "Overall, this should be read as a validation-first research prototype rather than a production signal. The pipeline now closes the loop from forecast to backtest to trading-strategy support, but the trading result is threshold-sensitive and fold-concentrated. A deployable version would need a longer multi-year backtest, forecast-run/lead-time pinned weather inputs, explicit issue-time feature cuts, regional generation constraints, historical executable price marks, realistic transaction costs, and hyperparameter tuning isolated from the evaluation window.",
+        "Overall, this should be read as a validation-first research prototype rather than a production signal. The pipeline now closes the loop from forecast to backtest to trading-strategy support, but the trading result is threshold-sensitive, fold-concentrated, and benchmarked only with a paper price-surprise proxy. A deployable version would need a longer multi-year backtest, forecast-run/lead-time pinned weather inputs, explicit issue-time feature cuts, regional generation constraints, historical executable DA-to-intraday or imbalance price marks, realistic transaction costs, and hyperparameter tuning isolated from the evaluation window.",
         "",
     ]
 

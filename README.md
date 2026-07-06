@@ -9,7 +9,7 @@ The project is deliberately built as a candidate-facing case-study repo: reprodu
 - Market: Germany (`DE`)
 - Target: hourly actual wind generation, onshore plus offshore, in MW
 - Forecast horizon framing: rolling 24-hour-ahead calibration of a public wind forecast
-- Strategy framing: paper long/short German day-ahead price-surprise signal driven by wind forecast residuals
+- Strategy framing: paper long/short German day-ahead price-surprise signal driven by wind forecast residuals, benchmarked against a public SMARD forecast-ramp rule
 
 ## Public Sources
 
@@ -63,11 +63,13 @@ python scripts/run_pipeline.py --start 2025-01-01 --end 2026-05-31
 Running the pipeline writes:
 
 - `data/processed/germany_wind_dataset.csv`
+- `outputs/qa_checks.csv`
 - `outputs/qa_report.md`
 - `outputs/metrics.csv`
 - `outputs/fold_metrics.csv`
 - `outputs/predictions.csv`
 - `outputs/feature_importance.csv`
+- `outputs/strategy_trade_log.csv`
 - `outputs/strategy_metrics.csv`
 - `outputs/strategy_fold_metrics.csv`
 - `outputs/strategy_threshold_sensitivity.csv`
@@ -79,4 +81,4 @@ The GitHub repository tracks the reproducible code, docs, and compact QA/metric 
 
 ## Notes On Honesty
 
-The headline model uses SMARD's public wind forecast as the strongest baseline and main ex-ante driver. This project should be read as a rolling 24-hour-ahead calibration model because it uses 24-hour actual and forecast-error lags. It is not a true prompt/intraday model; once recent metered actuals are available, previous-hour persistence should be tested and would likely be difficult to beat. It is also not a strict day-ahead auction signal: because the German day-ahead auction clears around D-1 noon, 24-hour lagged actuals would be unavailable for some later delivery hours. For a strict D-1 noon gate-closure forecast, lagged features should be recomputed relative to the issue timestamp. Weather inputs come from Open-Meteo's archived forecast endpoint rather than a pure reanalysis endpoint; production validation should pin every row to a fixed model run and lead time.
+The headline model uses SMARD's public wind forecast as the strongest baseline and main ex-ante driver. This project should be read as a rolling 24-hour-ahead calibration model because it uses 24-hour actual and forecast-error lags. It is not a true prompt/intraday model; once recent metered actuals are available, previous-hour persistence should be tested and would likely be difficult to beat. It is also not a strict day-ahead auction signal: because the German day-ahead auction clears around D-1 noon, 24-hour lagged actuals would be unavailable for some later delivery hours. Weather inputs come from Open-Meteo's archived forecast endpoint rather than fixed D-1 noon model-run snapshots, so the current weather rows should also be treated as post-auction for strict DA trading. For a strict D-1 noon gate-closure forecast, lagged features and weather rows should be recomputed relative to the issue timestamp. Production strategy validation should use executable DA-to-intraday or imbalance settlement marks, not the paper DA(t) minus DA(t-24) proxy used here.

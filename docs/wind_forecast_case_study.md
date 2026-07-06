@@ -13,9 +13,10 @@ The intended use case is rolling 24-hour-ahead calibration of the public wind fo
 Sample: 2024-12-31 23:00:00+00:00 to 2026-05-31 21:00:00+00:00 UTC, 12383 hourly rows.
 
 - SMARD / Bundesnetzagentur: actual wind generation and published wind generation forecasts for Germany.
+- SMARD / Bundesnetzagentur: German/Luxembourg day-ahead auction prices, series 4169, for the strategy research layer.
 - Open-Meteo Historical Forecast API: archived forecast-model weather covariates at four representative German wind locations.
 
-QA passed: True. Checks cover timestamp uniqueness/continuity, local power-day hour counts, missing values, and plausible generation/weather ranges.
+QA passed: True. Checks cover timestamp uniqueness/continuity, local power-day hour counts, missing values, and plausible generation, weather, and day-ahead price ranges.
 
 ## Features
 
@@ -63,34 +64,40 @@ For trading or dispatch analysis, the useful signal is the rolling 24-hour-ahead
 
 ## Strategy Backtest
 
-The strategy converts the wind residual into a paper price-surprise signal. If XGBoost forecasts wind at least 1.5 GW above the public SMARD forecast, the signal is short German day-ahead price; if it is at least 1.5 GW below, the signal is long. P&L is measured against a previous-day same-hour day-ahead price baseline with 0.5 EUR/MWh transaction cost.
+The strategy converts the wind residual into a paper price-surprise signal. If XGBoost forecasts wind at least 1.5 GW above the public SMARD forecast, the signal is short German day-ahead price; if it is at least 1.5 GW below, the signal is long. The benchmark applies the same rule to the public SMARD 24-hour forecast ramp alone. P&L is measured against a previous-day same-hour day-ahead price baseline with 0.5 EUR/MWh transaction cost.
 
-This is a research backtest, not an executable exchange P&L claim: the entry price is a transparent persistence proxy, not a historical traded forward quote. The goal is to test whether the wind residual contains directionally useful price information after costs.
+This is a research backtest, not an executable exchange P&L claim: the entry price is a transparent persistence proxy, not a historical traded forward quote. Economically, a production version would monetize a forecast-error edge through day-ahead to intraday or imbalance settlement, not through DA(t) minus DA(t-24). The goal here is narrower: test whether the wind residual contains directionally useful price information beyond a public forecast-ramp rule after costs.
 
-| strategy | hours | trades | trade_rate | hit_rate | avg_net_pnl_eur_mwh | total_net_pnl_eur_mwh | sharpe_like_per_trade | hit_rate_z_stat | net_pnl_t_stat |
+| strategy | hours | trades | trade_rate | gross_hit_rate | avg_net_pnl_eur_mwh | total_net_pnl_eur_mwh | sharpe_like_per_trade | hit_rate_z_stat | net_pnl_t_stat |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | xgboost_wind_residual_signal | 7895 | 787 | 0.100 | 0.529 | 0.240 | 188.720 | 0.005 | 1.604 | 0.143 |
+| public_smard_forecast_ramp_signal | 7895 | 6822 | 0.864 | 0.800 | 20.110 | 137,188.390 | 0.553 | 49.615 | 45.670 |
 
-Read honestly, this is a weak research signal rather than a tradable edge: the 1.5 GW rule trades 10.0% of hours, has a 52.9% hit rate, earns 0.240 EUR/MWh after costs, and has a Sharpe-like score of only 0.005. Simple strategy-side significance checks are also weak: unclustered hit-rate z-stat 1.60 and per-trade net-P&L t-stat 0.14. Fold-level clustering would make this evidence weaker, not stronger. Fold-level P&L is uneven: 4 of 11 folds are positive, with the best fold in Nov 2025 and the worst in Apr 2026. The full-sample P&L is 188.72 EUR/MWh, but Nov 2025 alone contributes 2,554.32; excluding that fold, the strategy loses 2,365.60 over 706 trades (-3.351 EUR/MWh per trade).
+Read honestly, the residual strategy is a weak research signal rather than a tradable edge: the 1.5 GW rule trades 10.0% of hours, has a 52.9% gross hit rate, earns 0.240 EUR/MWh after costs, and has a Sharpe-like score of only 0.005. The public SMARD forecast-ramp benchmark earns 137,188.39 EUR/MWh versus 188.72 for the residual strategy, so the residual correction does not beat the public-only rule here. Simple strategy-side significance checks are also weak: unclustered gross-hit-rate z-stat 1.60 and per-trade net-P&L t-stat 0.14. Fold-level clustering would make this evidence weaker, not stronger. Fold-level P&L is uneven: 4 of 11 folds are positive, with the best fold in Nov 2025 and the worst in Apr 2026. The full-sample P&L is 188.72 EUR/MWh, but Nov 2025 alone contributes 2,554.32; excluding that fold, the strategy loses 2,365.60 over 706 trades (-3.351 EUR/MWh per trade).
 
 Threshold sensitivity is included to avoid pretending one hand-picked trigger tells the whole story.
 
-| threshold_mw | trades | hit_rate | avg_net_pnl_eur_mwh | total_net_pnl_eur_mwh | sharpe_like_per_trade |
-| --- | --- | --- | --- | --- | --- |
-| 500.0 | 4076 | 0.529 | 0.738 | 3,007.230 | 0.019 |
-| 1000.0 | 1855 | 0.544 | 1.659 | 3,077.460 | 0.041 |
-| 1500.0 | 787 | 0.529 | 0.240 | 188.720 | 0.005 |
-| 2000.0 | 346 | 0.462 | -6.064 | -2,098.270 | -0.113 |
-| 3000.0 | 90 | 0.189 | -39.339 | -3,540.530 | -0.801 |
+| strategy | threshold_mw | trades | gross_hit_rate | avg_net_pnl_eur_mwh | total_net_pnl_eur_mwh | sharpe_like_per_trade | net_pnl_t_stat |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| xgboost_wind_residual_signal | 500.0 | 4076 | 0.529 | 0.738 | 3,007.230 | 0.019 | 1.189 |
+| public_smard_forecast_ramp_signal | 500.0 | 7524 | 0.782 | 18.730 | 140,927.000 | 0.499 | 43.271 |
+| xgboost_wind_residual_signal | 1000.0 | 1855 | 0.544 | 1.659 | 3,077.460 | 0.041 | 1.762 |
+| public_smard_forecast_ramp_signal | 1000.0 | 7149 | 0.790 | 19.303 | 138,000.520 | 0.528 | 44.641 |
+| xgboost_wind_residual_signal | 1500.0 | 787 | 0.529 | 0.240 | 188.720 | 0.005 | 0.143 |
+| public_smard_forecast_ramp_signal | 1500.0 | 6822 | 0.800 | 20.110 | 137,188.390 | 0.553 | 45.670 |
+| xgboost_wind_residual_signal | 2000.0 | 346 | 0.462 | -6.064 | -2,098.270 | -0.113 | -2.098 |
+| public_smard_forecast_ramp_signal | 2000.0 | 6494 | 0.807 | 20.645 | 134,069.650 | 0.565 | 45.521 |
+| xgboost_wind_residual_signal | 3000.0 | 90 | 0.189 | -39.339 | -3,540.530 | -0.801 | -7.596 |
+| public_smard_forecast_ramp_signal | 3000.0 | 5849 | 0.824 | 22.250 | 130,137.390 | 0.600 | 45.893 |
 
-The best threshold in this small grid is 1,000 MW, but the high-confidence triggers reverse sharply, so the backtest supports further research rather than deployment.
+The best residual threshold in this five-point grid is 1,000 MW, but that is a multiple-testing maximum with unadjusted net-P&L t-stat 1.76, so it supports further research rather than deployment.
 
 ## Limitations
 
 The validation now spans summer, autumn, winter, and spring folds, but it is still only one annual cycle. I would not treat the result as seasonally robust until it is repeated over multiple years and distinct weather regimes.
 
-The current feature set is valid for a rolling 24-hour-ahead information set. It is not a true prompt/intraday model; once recent metered actuals are available, a previous-hour persistence benchmark should be tested and would likely be hard to beat. It is also not a strict day-ahead auction signal: the German day-ahead auction clears around D-1 noon, so 24-hour lagged actuals would be unavailable for some later delivery hours. For a strict D-1 noon forecast, all lagged features should be recomputed relative to the issue timestamp.
+The current feature set is valid for a rolling 24-hour-ahead information set. It is not a true prompt/intraday model; once recent metered actuals are available, a previous-hour persistence benchmark should be tested and would likely be hard to beat. It is also not a strict day-ahead auction signal: the German day-ahead auction clears around D-1 noon, so 24-hour lagged actuals would be unavailable for some later delivery hours. The weather covariates are archived near-delivery forecast values rather than D-1 noon model-run snapshots, so they should be treated as post-auction for strict day-ahead trading. For a strict D-1 noon forecast, all lagged features and weather rows should be recomputed relative to the issue timestamp.
 
 The XGBoost hyperparameters were kept fixed for the reported rerun, but they were chosen during prototyping on this same history. A production study should tune on a separate period or use nested time-series validation.
 
-Overall, this should be read as a validation-first research prototype rather than a production signal. The pipeline now closes the loop from forecast to backtest to trading-strategy support, but the trading result is threshold-sensitive and fold-concentrated. A deployable version would need a longer multi-year backtest, forecast-run/lead-time pinned weather inputs, explicit issue-time feature cuts, regional generation constraints, historical executable price marks, realistic transaction costs, and hyperparameter tuning isolated from the evaluation window.
+Overall, this should be read as a validation-first research prototype rather than a production signal. The pipeline now closes the loop from forecast to backtest to trading-strategy support, but the trading result is threshold-sensitive, fold-concentrated, and benchmarked only with a paper price-surprise proxy. A deployable version would need a longer multi-year backtest, forecast-run/lead-time pinned weather inputs, explicit issue-time feature cuts, regional generation constraints, historical executable DA-to-intraday or imbalance price marks, realistic transaction costs, and hyperparameter tuning isolated from the evaluation window.
