@@ -30,36 +30,60 @@ Baselines are previous-week same-hour persistence, train-fold hour/month climato
 | persistence_prev_week | 11,430.50 | 14,695.62 | 60.08 | -717.20 |
 | hour_month_climatology | 8,707.26 | 11,014.03 | -1,097.14 | -522.51 |
 | smard_forecast | 1,398.74 | 2,029.81 | -108.85 | 0.00 |
-| xgboost_residual | 1,388.77 | 1,971.50 | 2.68 | 0.71 |
+| xgboost_residual | 1,396.43 | 1,988.55 | -0.18 | 0.17 |
 
 ## Interpretation
 
-XGBoost does not show a reliable edge over the SMARD forecast in this backtest: pooled MAE is only 0.71% better, while average fold skill is -0.12%.
+XGBoost does not show a reliable edge over the SMARD forecast in this backtest: pooled MAE is only 0.17% better, while average fold skill is -0.64%.
 
-A simple Newey-West lag-24 t-stat on the hourly absolute-error loss differential is 0.40. This is included only as a sanity check, but it supports the same conclusion: the observed pooled improvement is noise, not a statistically robust edge.
+A simple Newey-West lag-24 t-stat on the hourly absolute-error loss differential is 0.09. This is included only as a sanity check, but it supports the same conclusion: the observed pooled improvement is noise, not a statistically robust edge.
 
-The previous-week persistence MAE was 11,430.50 MW and the hour/month climatology MAE was 8,707.26 MW. The serious benchmark is SMARD: MAE 1,398.74 MW versus XGBoost 1,388.77 MW. XGBoost beat SMARD in 7 of 11 folds, but the fold dispersion is large enough that I would not claim a production edge from this evidence alone.
+The previous-week persistence MAE was 11,430.50 MW and the hour/month climatology MAE was 8,707.26 MW. The serious benchmark is SMARD: MAE 1,398.74 MW versus XGBoost 1,396.43 MW. XGBoost beat SMARD in 7 of 11 folds, but the fold dispersion is large enough that I would not claim a production edge from this evidence alone.
 
-Bias is also worth watching. SMARD bias was -108.85 MW and XGBoost bias was 2.68 MW overall, but several folds show over-correction. The strongest relative fold was fold 6 (Dec 2025), where XGBoost improved MAE versus SMARD by 13.0%. The weakest relative fold was fold 4 (Oct 2025), where XGBoost lost by 25.9%. That October failure is the clearest stress case in the backtest and should be investigated around sharp ramps, storm regimes, curtailment/congestion, or weather-regime changes where lagged errors stop being stable.
+Bias is also worth watching. SMARD bias was -108.85 MW and XGBoost bias was -0.18 MW overall, but several folds show over-correction. The strongest relative fold was fold 6 (Dec 2025), where XGBoost improved MAE versus SMARD by 13.4%. The weakest relative fold was fold 4 (Oct 2025), where XGBoost lost by 22.9%. That October failure is the clearest stress case in the backtest and should be investigated around sharp ramps, storm regimes, curtailment/congestion, or weather-regime changes where lagged errors stop being stable.
 
 ## Top Features
 
 | feature | importance_mean | importance_std |
 | --- | --- | --- |
-| weather_wind_gusts_10m_mean_ms | 0.0842 | 0.0122 |
-| weather_wind_speed_100m_cubed_mean | 0.0521 | 0.0146 |
-| dayofyear_cos | 0.0267 | 0.0074 |
-| lower_saxony_pressure_msl_hpa | 0.0253 | 0.0046 |
-| schleswig_holstein_wind_gusts_10m_ms | 0.0252 | 0.0139 |
-| lower_saxony_wind_speed_100m_ms | 0.0252 | 0.0048 |
-| month_cos | 0.0246 | 0.0055 |
-| schleswig_holstein_temperature_2m_c | 0.0233 | 0.0036 |
-| north_sea_wind_gusts_10m_ms | 0.0227 | 0.0122 |
-| hour_cos | 0.0207 | 0.0032 |
+| weather_wind_gusts_10m_mean_ms | 0.0814 | 0.0144 |
+| weather_wind_speed_100m_cubed_mean | 0.0566 | 0.0166 |
+| dayofyear_cos | 0.0267 | 0.0065 |
+| schleswig_holstein_wind_gusts_10m_ms | 0.0263 | 0.0140 |
+| lower_saxony_wind_speed_100m_ms | 0.0254 | 0.0050 |
+| lower_saxony_pressure_msl_hpa | 0.0254 | 0.0052 |
+| schleswig_holstein_temperature_2m_c | 0.0223 | 0.0057 |
+| hour_cos | 0.0213 | 0.0040 |
+| month_cos | 0.0209 | 0.0057 |
+| north_sea_wind_gusts_10m_ms | 0.0209 | 0.0100 |
 
 ## How This Would Be Used
 
 For trading or dispatch analysis, the useful signal is the rolling 24-hour-ahead calibrated deviation from the public wind forecast. A positive model residual says actual wind is expected above the published forecast, which is bearish for residual load and power prices all else equal. A negative residual says the opposite. The signal should be invalidated or down-weighted when fresh TSO/weather updates materially change the forecast, when observed wind errors diverge from lagged error patterns, or when grid constraints/curtailment dominate weather-driven production.
+
+## Strategy Backtest
+
+The strategy converts the wind residual into a paper price-surprise signal. If XGBoost forecasts wind at least 1.5 GW above the public SMARD forecast, the signal is short German day-ahead price; if it is at least 1.5 GW below, the signal is long. P&L is measured against a previous-day same-hour day-ahead price baseline with 0.5 EUR/MWh transaction cost.
+
+This is a research backtest, not an executable exchange P&L claim: the entry price is a transparent persistence proxy, not a historical traded forward quote. The goal is to test whether the wind residual contains directionally useful price information after costs.
+
+| strategy | hours | trades | trade_rate | hit_rate | avg_net_pnl_eur_mwh | total_net_pnl_eur_mwh | sharpe_like_per_trade |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| xgboost_wind_residual_signal | 7895 | 787 | 0.100 | 0.529 | 0.240 | 188.720 | 0.005 |
+
+Read honestly, this is a weak research signal rather than a tradable edge: the 1.5 GW rule trades 10.0% of hours, has a 52.9% hit rate, earns 0.240 EUR/MWh after costs, and has a Sharpe-like score of only 0.005. Fold-level P&L is uneven: 4 of 11 folds are positive, with the best fold in Nov 2025 and the worst in Apr 2026.
+
+Threshold sensitivity is included to avoid pretending one hand-picked trigger tells the whole story.
+
+| threshold_mw | trades | hit_rate | avg_net_pnl_eur_mwh | total_net_pnl_eur_mwh | sharpe_like_per_trade |
+| --- | --- | --- | --- | --- | --- |
+| 500.0 | 4076 | 0.529 | 0.738 | 3,007.230 | 0.019 |
+| 1000.0 | 1855 | 0.544 | 1.659 | 3,077.460 | 0.041 |
+| 1500.0 | 787 | 0.529 | 0.240 | 188.720 | 0.005 |
+| 2000.0 | 346 | 0.462 | -6.064 | -2,098.270 | -0.113 |
+| 3000.0 | 90 | 0.189 | -39.339 | -3,540.530 | -0.801 |
+
+The best threshold in this small grid is 1,000 MW, but the high-confidence triggers reverse sharply, so the backtest supports further research rather than deployment.
 
 ## Limitations
 
@@ -69,4 +93,4 @@ The current feature set is valid for a rolling 24-hour-ahead information set. It
 
 The XGBoost hyperparameters were kept fixed for the reported rerun, but they were chosen during prototyping on this same history. A production study should tune on a separate period or use nested time-series validation.
 
-Overall, this should be read as a validation-first prototype rather than a production signal. The pipeline demonstrates the right data QA, walk-forward discipline, and benchmark framing, but a deployable version would need a longer multi-year backtest, forecast-run/lead-time pinned weather inputs, explicit issue-time feature cuts, regional generation constraints, and hyperparameter tuning isolated from the evaluation window.
+Overall, this should be read as a validation-first research prototype rather than a production signal. The pipeline now closes the loop from forecast to backtest to trading-strategy support, but the trading result is threshold-sensitive and fold-concentrated. A deployable version would need a longer multi-year backtest, forecast-run/lead-time pinned weather inputs, explicit issue-time feature cuts, regional generation constraints, historical executable price marks, realistic transaction costs, and hyperparameter tuning isolated from the evaluation window.
