@@ -1,14 +1,15 @@
 # Germany Wind Generation Forecasting With XGBoost
 
-Prototype forecasting hourly German wind generation with public data, XGBoost, and walk-forward validation.
+Prototype forecasting hourly German wind generation with public data, XGBoost, walk-forward validation, and a simple wind-to-price trading-signal backtest.
 
-The project is deliberately built as a candidate-facing case-study repo: reproducible ingestion, QA checks, feature engineering, baselines, an XGBoost improved model, honest time-series validation, and a short written interpretation of where the model helps or fails.
+The project is deliberately built as a candidate-facing case-study repo: reproducible ingestion, QA checks, feature engineering, baselines, an XGBoost improved model, honest time-series validation, a trading-signal research layer, and a short written interpretation of where the model helps or fails.
 
 ## Market And Target
 
 - Market: Germany (`DE`)
 - Target: hourly actual wind generation, onshore plus offshore, in MW
 - Forecast horizon framing: rolling 24-hour-ahead calibration of a public wind forecast
+- Strategy framing: paper long/short German day-ahead price-surprise signal driven by wind forecast residuals
 
 ## Public Sources
 
@@ -18,6 +19,8 @@ The project is deliberately built as a candidate-facing case-study repo: reprodu
 - Open-Meteo Historical Forecast API: archived weather forecast model features at representative German wind locations.
   - Documentation: https://open-meteo.com/en/docs/historical-forecast-api
   - Variables used: 100m wind speed/direction, 10m gusts, temperature, and sea-level pressure.
+- SMARD day-ahead price series for Germany/Luxembourg, used for the strategy research layer.
+  - Filter used: `4169` day-ahead auction price (`DE-LU`).
 
 ## Models
 
@@ -63,11 +66,14 @@ Running the pipeline writes:
 - `outputs/fold_metrics.csv`
 - `outputs/predictions.csv`
 - `outputs/feature_importance.csv`
+- `outputs/strategy_metrics.csv`
+- `outputs/strategy_fold_metrics.csv`
+- `outputs/strategy_threshold_sensitivity.csv`
 - `outputs/submission.csv`
 - `outputs/figures/*.png`
 - `docs/wind_forecast_case_study.md`
 
-The GitHub repository tracks the reproducible code, docs, and compact QA/metric outputs. Large generated files such as the processed hourly dataset, full prediction table, submission CSV, and figures are intentionally left as pipeline outputs rather than source-controlled assets.
+The GitHub repository tracks the reproducible code, docs, and compact QA/metric outputs. Large generated files such as the processed hourly dataset, full prediction table, submission CSV, full trade log, and figures are intentionally left as pipeline outputs rather than source-controlled assets.
 
 ## Notes On Honesty
 
