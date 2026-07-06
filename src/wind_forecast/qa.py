@@ -21,6 +21,8 @@ REQUIRED_COLUMNS = [
     "forecast_wind_total_mw",
 ]
 
+PRICE_COLUMNS = ["price_da_eur_mwh"]
+
 
 def expected_local_power_day_hours(local_date) -> int:
     start = datetime(local_date.year, local_date.month, local_date.day, tzinfo=MARKET_TZ)
@@ -64,7 +66,7 @@ def qa_checks(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, object]]:
     missing_utc_hours = int(len(expected_utc.difference(pd.DatetimeIndex(df["timestamp_utc"]))))
     checks.append({"check": "missing_utc_hours", "value": missing_utc_hours, "passed": missing_utc_hours == 0})
 
-    for column in REQUIRED_COLUMNS:
+    for column in [*REQUIRED_COLUMNS, *PRICE_COLUMNS]:
         missing = int(df[column].isna().sum())
         checks.append({"check": f"missing_{column}", "value": missing, "passed": missing == 0})
 
@@ -92,6 +94,21 @@ def qa_checks(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, object]]:
         max_value = float(df[column].max())
         checks.append({"check": f"{column}_non_negative", "value": round(min_value, 3), "passed": min_value >= 0})
         checks.append({"check": f"{column}_below_100gw", "value": round(max_value, 3), "passed": max_value < 100_000})
+
+    checks.append(
+        {
+            "check": "price_da_reasonable_min",
+            "value": round(float(df["price_da_eur_mwh"].min()), 3),
+            "passed": float(df["price_da_eur_mwh"].min()) > -1000,
+        }
+    )
+    checks.append(
+        {
+            "check": "price_da_reasonable_max",
+            "value": round(float(df["price_da_eur_mwh"].max()), 3),
+            "passed": float(df["price_da_eur_mwh"].max()) < 5000,
+        }
+    )
 
     wind_speed_columns = [column for column in df.columns if column.endswith("_wind_speed_100m_ms")]
     for column in wind_speed_columns:
