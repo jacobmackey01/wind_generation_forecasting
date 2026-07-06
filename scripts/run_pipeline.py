@@ -19,6 +19,7 @@ from wind_forecast.models import WalkForwardConfig, validate_walk_forward  # noq
 from wind_forecast.qa import qa_checks, write_qa_report  # noqa: E402
 from wind_forecast.report import write_case_study, write_figures  # noqa: E402
 from wind_forecast.smard import build_smard_dataset  # noqa: E402
+from wind_forecast.strategy import backtest_wind_price_signal  # noqa: E402
 from wind_forecast.weather import build_weather_dataset  # noqa: E402
 
 
@@ -29,6 +30,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--initial-train-days", type=int, default=180)
     parser.add_argument("--fold-days", type=int, default=30)
     parser.add_argument("--step-days", type=int, default=30)
+    parser.add_argument("--signal-threshold-mw", type=float, default=1500.0)
+    parser.add_argument("--transaction-cost-eur-mwh", type=float, default=0.5)
     parser.add_argument("--no-cache", action="store_true", help="Force re-download of raw public data.")
     return parser.parse_args()
 
@@ -75,6 +78,17 @@ def main() -> None:
     submission = predictions[["id", "xgboost_residual"]].rename(columns={"xgboost_residual": "y_pred"})
     submission.to_csv(outputs_dir / "submission.csv", index=False)
 
+    trade_log, strategy_metrics, strategy_fold_metrics, strategy_thresholds = backtest_wind_price_signal(
+        feature_frame,
+        predictions,
+        threshold_mw=args.signal_threshold_mw,
+        transaction_cost_eur_mwh=args.transaction_cost_eur_mwh,
+    )
+    trade_log.to_csv(outputs_dir / "strategy_trade_log.csv", index=False)
+    strategy_metrics.to_csv(outputs_dir / "strategy_metrics.csv", index=False)
+    strategy_fold_metrics.to_csv(outputs_dir / "strategy_fold_metrics.csv", index=False)
+    strategy_thresholds.to_csv(outputs_dir / "strategy_threshold_sensitivity.csv", index=False)
+
     write_figures(predictions, fold_metrics, feature_importance, figures_dir)
     write_case_study(
         dataset=dataset,
@@ -83,6 +97,9 @@ def main() -> None:
         fold_metrics=fold_metrics,
         predictions=predictions,
         feature_importance=feature_importance,
+        strategy_metrics=strategy_metrics,
+        strategy_fold_metrics=strategy_fold_metrics,
+        strategy_thresholds=strategy_thresholds,
         path=docs_dir / "wind_forecast_case_study.md",
     )
 
