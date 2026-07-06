@@ -56,12 +56,27 @@ SERIES = [
         unit="MW",
         description="Forecast offshore wind generation",
     ),
+    SmardSeries(
+        name="price_da_eur_mwh",
+        filter_id=4169,
+        region="DE-LU",
+        unit="EUR/MWh",
+        description="Day-ahead auction price",
+    ),
 ]
 
 
-def _read_json(url: str) -> dict:
-    with urlopen(url, timeout=60) as response:
-        return json.loads(response.read().decode("utf-8"))
+def _read_json(url: str, *, attempts: int = 3, timeout: int = 90) -> dict:
+    last_error: Exception | None = None
+    for attempt in range(attempts):
+        try:
+            with urlopen(url, timeout=timeout) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except Exception as exc:
+            last_error = exc
+            if attempt < attempts - 1:
+                time.sleep(2 * (attempt + 1))
+    raise RuntimeError(f"Failed to read SMARD URL after {attempts} attempts: {url}") from last_error
 
 
 def _to_date(value: str | date | datetime) -> date:
