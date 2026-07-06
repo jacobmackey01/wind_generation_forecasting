@@ -67,11 +67,11 @@ The strategy converts the wind residual into a paper price-surprise signal. If X
 
 This is a research backtest, not an executable exchange P&L claim: the entry price is a transparent persistence proxy, not a historical traded forward quote. The goal is to test whether the wind residual contains directionally useful price information after costs.
 
-| strategy | hours | trades | trade_rate | hit_rate | avg_net_pnl_eur_mwh | total_net_pnl_eur_mwh | sharpe_like_per_trade |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| xgboost_wind_residual_signal | 7895 | 787 | 0.100 | 0.529 | 0.240 | 188.720 | 0.005 |
+| strategy | hours | trades | trade_rate | hit_rate | avg_net_pnl_eur_mwh | total_net_pnl_eur_mwh | sharpe_like_per_trade | hit_rate_z_stat | net_pnl_t_stat |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| xgboost_wind_residual_signal | 7895 | 787 | 0.100 | 0.529 | 0.240 | 188.720 | 0.005 | 1.604 | 0.143 |
 
-Read honestly, this is a weak research signal rather than a tradable edge: the 1.5 GW rule trades 10.0% of hours, has a 52.9% hit rate, earns 0.240 EUR/MWh after costs, and has a Sharpe-like score of only 0.005. Fold-level P&L is uneven: 4 of 11 folds are positive, with the best fold in Nov 2025 and the worst in Apr 2026.
+Read honestly, this is a weak research signal rather than a tradable edge: the 1.5 GW rule trades 10.0% of hours, has a 52.9% hit rate, earns 0.240 EUR/MWh after costs, and has a Sharpe-like score of only 0.005. Simple strategy-side significance checks are also weak: unclustered hit-rate z-stat 1.60 and per-trade net-P&L t-stat 0.14. Fold-level clustering would make this evidence weaker, not stronger. Fold-level P&L is uneven: 4 of 11 folds are positive, with the best fold in Nov 2025 and the worst in Apr 2026. The full-sample P&L is 188.72 EUR/MWh, but Nov 2025 alone contributes 2,554.32; excluding that fold, the strategy loses 2,365.60 over 706 trades (-3.351 EUR/MWh per trade).
 
 Threshold sensitivity is included to avoid pretending one hand-picked trigger tells the whole story.
 
@@ -89,7 +89,7 @@ The best threshold in this small grid is 1,000 MW, but the high-confidence trigg
 
 The validation now spans summer, autumn, winter, and spring folds, but it is still only one annual cycle. I would not treat the result as seasonally robust until it is repeated over multiple years and distinct weather regimes.
 
-The current feature set is valid for a rolling 24-hour-ahead information set. It is not a true prompt/intraday model; once recent metered actuals are available, a previous-hour persistence benchmark should be tested and would likely be hard to beat. For a strict D-1 noon forecast, all lagged features should be recomputed relative to the issue timestamp.
+The current feature set is valid for a rolling 24-hour-ahead information set. It is not a true prompt/intraday model; once recent metered actuals are available, a previous-hour persistence benchmark should be tested and would likely be hard to beat. It is also not a strict day-ahead auction signal: the German day-ahead auction clears around D-1 noon, so 24-hour lagged actuals would be unavailable for some later delivery hours. For a strict D-1 noon forecast, all lagged features should be recomputed relative to the issue timestamp.
 
 The XGBoost hyperparameters were kept fixed for the reported rerun, but they were chosen during prototyping on this same history. A production study should tune on a separate period or use nested time-series validation.
 

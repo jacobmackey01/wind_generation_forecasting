@@ -154,15 +154,30 @@ def write_case_study(
             f"earns {_fmt(strategy_row['avg_net_pnl_eur_mwh'], 3)} EUR/MWh after costs, "
             f"and has a Sharpe-like score of only {_fmt(strategy_row['sharpe_like_per_trade'], 3)}."
         )
+        significance_read = ""
+        if {"hit_rate_z_stat", "net_pnl_t_stat"}.issubset(strategy_row.index):
+            significance_read = (
+                f" Simple strategy-side significance checks are also weak: unclustered hit-rate z-stat "
+                f"{_fmt(strategy_row['hit_rate_z_stat'], 2)} and per-trade net-P&L t-stat "
+                f"{_fmt(strategy_row['net_pnl_t_stat'], 2)}. Fold-level clustering would make this evidence weaker, not stronger."
+            )
         fold_read = ""
         if strategy_fold_metrics is not None and not strategy_fold_metrics.empty:
             positive_folds = int((strategy_fold_metrics["total_net_pnl_eur_mwh"] > 0).sum())
             strategy_fold_count = int(len(strategy_fold_metrics))
             best_strategy_fold = strategy_fold_metrics.sort_values("total_net_pnl_eur_mwh", ascending=False).iloc[0]
             worst_strategy_fold = strategy_fold_metrics.sort_values("total_net_pnl_eur_mwh", ascending=True).iloc[0]
+            total_pnl = float(strategy_row["total_net_pnl_eur_mwh"])
+            best_pnl = float(best_strategy_fold["total_net_pnl_eur_mwh"])
+            total_ex_best = total_pnl - best_pnl
+            trades_ex_best = int(strategy_row["trades"] - best_strategy_fold["trades"])
+            avg_ex_best = total_ex_best / trades_ex_best if trades_ex_best else float("nan")
             fold_read = (
                 f" Fold-level P&L is uneven: {positive_folds} of {strategy_fold_count} folds are positive, "
-                f"with the best fold in {_fold_month(best_strategy_fold)} and the worst in {_fold_month(worst_strategy_fold)}."
+                f"with the best fold in {_fold_month(best_strategy_fold)} and the worst in {_fold_month(worst_strategy_fold)}. "
+                f"The full-sample P&L is {_fmt(total_pnl, 2)} EUR/MWh, but {_fold_month(best_strategy_fold)} alone contributes "
+                f"{_fmt(best_pnl, 2)}; excluding that fold, the strategy loses {_fmt(abs(total_ex_best), 2)} over "
+                f"{trades_ex_best} trades ({_fmt(avg_ex_best, 3)} EUR/MWh per trade)."
             )
 
         strategy_doc = strategy_metrics.copy()
@@ -173,6 +188,8 @@ def write_case_study(
             "avg_net_pnl_eur_mwh",
             "total_net_pnl_eur_mwh",
             "sharpe_like_per_trade",
+            "hit_rate_z_stat",
+            "net_pnl_t_stat",
         ]:
             if column in strategy_doc.columns:
                 strategy_doc[column] = strategy_doc[column].map(lambda x: _fmt(x, 3) if pd.notna(x) else "")
@@ -215,11 +232,13 @@ def write_case_study(
                         "avg_net_pnl_eur_mwh",
                         "total_net_pnl_eur_mwh",
                         "sharpe_like_per_trade",
+                        "hit_rate_z_stat",
+                        "net_pnl_t_stat",
                     ]
                 ]
             ),
             "",
-            f"{strategy_read}{fold_read}",
+            f"{strategy_read}{significance_read}{fold_read}",
             "",
         ]
         if not threshold_doc.empty:
@@ -287,7 +306,7 @@ def write_case_study(
         "",
         "The validation now spans summer, autumn, winter, and spring folds, but it is still only one annual cycle. I would not treat the result as seasonally robust until it is repeated over multiple years and distinct weather regimes.",
         "",
-        "The current feature set is valid for a rolling 24-hour-ahead information set. It is not a true prompt/intraday model; once recent metered actuals are available, a previous-hour persistence benchmark should be tested and would likely be hard to beat. For a strict D-1 noon forecast, all lagged features should be recomputed relative to the issue timestamp.",
+        "The current feature set is valid for a rolling 24-hour-ahead information set. It is not a true prompt/intraday model; once recent metered actuals are available, a previous-hour persistence benchmark should be tested and would likely be hard to beat. It is also not a strict day-ahead auction signal: the German day-ahead auction clears around D-1 noon, so 24-hour lagged actuals would be unavailable for some later delivery hours. For a strict D-1 noon forecast, all lagged features should be recomputed relative to the issue timestamp.",
         "",
         "The XGBoost hyperparameters were kept fixed for the reported rerun, but they were chosen during prototyping on this same history. A production study should tune on a separate period or use nested time-series validation.",
         "",

@@ -11,7 +11,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from wind_forecast.strategy import build_trade_log  # noqa: E402
+from wind_forecast.strategy import build_trade_log, summarize_strategy  # noqa: E402
 
 
 def test_wind_edge_position_direction() -> None:
@@ -36,3 +36,22 @@ def test_wind_edge_position_direction() -> None:
 
     assert int(trade_log.loc[trade_log["timestamp_utc"] == hours[24], "position"].iloc[0]) == -1
     assert int(trade_log.loc[trade_log["timestamp_utc"] == hours[25], "position"].iloc[0]) == 1
+
+
+def test_strategy_summary_includes_significance_fields() -> None:
+    trade_log = pd.DataFrame(
+        {
+            "position": [1, -1, 1, -1],
+            "gross_pnl_eur_mwh": [2.0, 1.0, -1.0, 3.0],
+            "net_pnl_eur_mwh": [1.5, 0.5, -1.5, 2.5],
+            "fold": [1, 1, 2, 2],
+            "fold_start": ["2025-01-01"] * 4,
+            "fold_end": ["2025-01-02"] * 4,
+        }
+    )
+
+    overall, _ = summarize_strategy(trade_log)
+
+    assert "hit_rate_z_stat" in overall.columns
+    assert "net_pnl_t_stat" in overall.columns
+    assert float(overall["hit_rate_z_stat"].iloc[0]) == 1.0

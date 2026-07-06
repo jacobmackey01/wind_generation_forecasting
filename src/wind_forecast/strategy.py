@@ -27,18 +27,25 @@ def _metrics(frame: pd.DataFrame, label: str) -> dict[str, float | int | str]:
                 "avg_net_pnl_eur_mwh": 0.0,
                 "total_net_pnl_eur_mwh": 0.0,
                 "sharpe_like_per_trade": np.nan,
+                "hit_rate_z_stat": np.nan,
+                "net_pnl_t_stat": np.nan,
             }
         )
         return out
 
     net = trades["net_pnl_eur_mwh"].to_numpy(dtype=float)
+    hit_rate = float((trades["gross_pnl_eur_mwh"] > 0).mean())
+    net_std = float(net.std(ddof=1)) if len(net) > 1 else 0.0
+    sharpe_like = float(net.mean() / net_std) if net_std else np.nan
     out.update(
         {
-            "hit_rate": float((trades["gross_pnl_eur_mwh"] > 0).mean()),
+            "hit_rate": hit_rate,
             "avg_gross_pnl_eur_mwh": float(trades["gross_pnl_eur_mwh"].mean()),
             "avg_net_pnl_eur_mwh": float(trades["net_pnl_eur_mwh"].mean()),
             "total_net_pnl_eur_mwh": float(trades["net_pnl_eur_mwh"].sum()),
-            "sharpe_like_per_trade": float(net.mean() / net.std(ddof=1)) if len(net) > 1 and net.std(ddof=1) else np.nan,
+            "sharpe_like_per_trade": sharpe_like,
+            "hit_rate_z_stat": float((hit_rate - 0.5) / np.sqrt(0.25 / len(trades))),
+            "net_pnl_t_stat": float(sharpe_like * np.sqrt(len(trades))) if pd.notna(sharpe_like) else np.nan,
         }
     )
     return out

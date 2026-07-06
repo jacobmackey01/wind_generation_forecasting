@@ -47,6 +47,8 @@ Default setup:
 - Step: 30 days
 - Metrics: MAE, RMSE, bias, and skill versus the SMARD forecast baseline
 
+The July rerun pins the direct package versions in `requirements.txt`, including `xgboost==3.3.0`, because earlier broad version ranges moved the fitted XGBoost result slightly. That version drift did not change the conclusion, but it should be controlled in a case-study repo.
+
 ## Quick Start
 
 ```powershell
@@ -77,4 +79,4 @@ The GitHub repository tracks the reproducible code, docs, and compact QA/metric 
 
 ## Notes On Honesty
 
-The headline model uses SMARD's public wind forecast as the strongest baseline and main ex-ante driver. This project should be read as a rolling 24-hour-ahead calibration model because it uses 24-hour actual and forecast-error lags. It is not a true prompt/intraday model; once recent metered actuals are available, previous-hour persistence should be tested and would likely be difficult to beat. For a strict D-1 noon gate-closure forecast, lagged features should be recomputed relative to the issue timestamp. Weather inputs come from Open-Meteo's archived forecast endpoint rather than a pure reanalysis endpoint; production validation should pin every row to a fixed model run and lead time.
+The headline model uses SMARD's public wind forecast as the strongest baseline and main ex-ante driver. This project should be read as a rolling 24-hour-ahead calibration model because it uses 24-hour actual and forecast-error lags. It is not a true prompt/intraday model; once recent metered actuals are available, previous-hour persistence should be tested and would likely be difficult to beat. It is also not a strict day-ahead auction signal: because the German day-ahead auction clears around D-1 noon, 24-hour lagged actuals would be unavailable for some later delivery hours. For a strict D-1 noon gate-closure forecast, lagged features should be recomputed relative to the issue timestamp. Weather inputs come from Open-Meteo's archived forecast endpoint rather than a pure reanalysis endpoint; production validation should pin every row to a fixed model run and lead time.
