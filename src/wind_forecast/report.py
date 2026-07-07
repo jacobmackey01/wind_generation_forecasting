@@ -14,7 +14,7 @@ import pandas as pd
 
 from wind_forecast.features import TARGET
 from wind_forecast.qa import markdown_table
-from wind_forecast.strategy import PUBLIC_RAMP_STRATEGY, RESIDUAL_STRATEGY
+from wind_forecast.strategy import PUBLIC_RAMP_STRATEGY, RESIDUAL_STRATEGY, TOTAL_NET_PNL
 
 
 def _fmt(value: float, digits: int = 2) -> str:
@@ -175,18 +175,24 @@ def write_case_study(
 
         benchmark_read = ""
         if public_row is not None:
-            residual_total = float(strategy_row["total_net_pnl_eur_mwh"])
-            public_total = float(public_row["total_net_pnl_eur_mwh"])
+            residual_avg = float(strategy_row["avg_net_pnl_eur_mwh"])
+            public_avg = float(public_row["avg_net_pnl_eur_mwh"])
+            residual_total = float(strategy_row[TOTAL_NET_PNL])
+            public_total = float(public_row[TOTAL_NET_PNL])
             delta = residual_total - public_total
             if delta <= 0:
                 benchmark_read = (
-                    f" The public SMARD forecast-ramp benchmark earns {_fmt(public_total, 2)} EUR/MWh versus "
-                    f"{_fmt(residual_total, 2)} for the residual strategy, so the residual correction does not beat the public-only rule here."
+                    f" Per trade, the public SMARD forecast-ramp benchmark earns {_fmt(public_avg, 3)} EUR/MWh versus "
+                    f"{_fmt(residual_avg, 3)} EUR/MWh for the residual strategy. Total P&L over 1 MW hourly clips is "
+                    f"{_fmt(public_total, 2)} EUR versus {_fmt(residual_total, 2)} EUR, so the residual correction "
+                    "does not beat the public-only rule here."
                 )
             else:
                 benchmark_read = (
-                    f" The residual strategy earns {_fmt(delta, 2)} EUR/MWh more than the public SMARD forecast-ramp benchmark, "
-                    "but the strategy statistics are too weak to call that an edge."
+                    f" Per trade, the residual strategy earns {_fmt(residual_avg, 3)} EUR/MWh versus "
+                    f"{_fmt(public_avg, 3)} EUR/MWh for the public SMARD forecast-ramp benchmark. Total P&L over 1 MW hourly clips is "
+                    f"{_fmt(residual_total, 2)} EUR versus {_fmt(public_total, 2)} EUR, but the strategy statistics "
+                    "are too weak to call that an edge."
                 )
         significance_read = ""
         if {"hit_rate_z_stat", "net_pnl_t_stat"}.issubset(strategy_row.index):
@@ -204,20 +210,20 @@ def write_case_study(
         fold_read = ""
         if strategy_fold_metrics is not None and not strategy_fold_metrics.empty:
             strategy_fold_frame = strategy_fold_metrics[strategy_fold_metrics["strategy"] == strategy_row["strategy"]]
-            positive_folds = int((strategy_fold_frame["total_net_pnl_eur_mwh"] > 0).sum())
+            positive_folds = int((strategy_fold_frame[TOTAL_NET_PNL] > 0).sum())
             strategy_fold_count = int(len(strategy_fold_frame))
-            best_strategy_fold = strategy_fold_frame.sort_values("total_net_pnl_eur_mwh", ascending=False).iloc[0]
-            worst_strategy_fold = strategy_fold_frame.sort_values("total_net_pnl_eur_mwh", ascending=True).iloc[0]
-            total_pnl = float(strategy_row["total_net_pnl_eur_mwh"])
-            best_pnl = float(best_strategy_fold["total_net_pnl_eur_mwh"])
+            best_strategy_fold = strategy_fold_frame.sort_values(TOTAL_NET_PNL, ascending=False).iloc[0]
+            worst_strategy_fold = strategy_fold_frame.sort_values(TOTAL_NET_PNL, ascending=True).iloc[0]
+            total_pnl = float(strategy_row[TOTAL_NET_PNL])
+            best_pnl = float(best_strategy_fold[TOTAL_NET_PNL])
             total_ex_best = total_pnl - best_pnl
             trades_ex_best = int(strategy_row["trades"] - best_strategy_fold["trades"])
             avg_ex_best = total_ex_best / trades_ex_best if trades_ex_best else float("nan")
             fold_read = (
                 f" Fold-level P&L is uneven: {positive_folds} of {strategy_fold_count} folds are positive, "
                 f"with the best fold in {_fold_month(best_strategy_fold)} and the worst in {_fold_month(worst_strategy_fold)}. "
-                f"The full-sample P&L is {_fmt(total_pnl, 2)} EUR/MWh, but {_fold_month(best_strategy_fold)} alone contributes "
-                f"{_fmt(best_pnl, 2)}; excluding that fold, the strategy loses {_fmt(abs(total_ex_best), 2)} over "
+                f"The full-sample 1 MW-clip P&L is {_fmt(total_pnl, 2)} EUR, but {_fold_month(best_strategy_fold)} alone contributes "
+                f"{_fmt(best_pnl, 2)} EUR; excluding that fold, the strategy loses {_fmt(abs(total_ex_best), 2)} EUR over "
                 f"{trades_ex_best} trades ({_fmt(avg_ex_best, 3)} EUR/MWh per trade)."
             )
 
@@ -227,7 +233,7 @@ def write_case_study(
             "hit_rate",
             "avg_gross_pnl_eur_mwh",
             "avg_net_pnl_eur_mwh",
-            "total_net_pnl_eur_mwh",
+            TOTAL_NET_PNL,
             "sharpe_like_per_trade",
             "hit_rate_z_stat",
             "net_pnl_t_stat",
@@ -239,7 +245,7 @@ def write_case_study(
         threshold_doc = pd.DataFrame()
         if strategy_thresholds is not None and not strategy_thresholds.empty:
             residual_thresholds = strategy_thresholds[strategy_thresholds["strategy"] == strategy_row["strategy"]]
-            best_threshold = residual_thresholds.sort_values("total_net_pnl_eur_mwh", ascending=False).iloc[0]
+            best_threshold = residual_thresholds.sort_values(TOTAL_NET_PNL, ascending=False).iloc[0]
             best_threshold_t = float(best_threshold.get("net_pnl_t_stat", 0.0))
             if abs(best_threshold_t) < 1.96:
                 threshold_read = (
@@ -259,12 +265,12 @@ def write_case_study(
                     "trades",
                     "hit_rate",
                     "avg_net_pnl_eur_mwh",
-                    "total_net_pnl_eur_mwh",
+                    TOTAL_NET_PNL,
                     "sharpe_like_per_trade",
                     "net_pnl_t_stat",
                 ]
             ].copy()
-            for column in ["hit_rate", "avg_net_pnl_eur_mwh", "total_net_pnl_eur_mwh", "sharpe_like_per_trade", "net_pnl_t_stat"]:
+            for column in ["hit_rate", "avg_net_pnl_eur_mwh", TOTAL_NET_PNL, "sharpe_like_per_trade", "net_pnl_t_stat"]:
                 threshold_doc[column] = threshold_doc[column].map(lambda x: _fmt(x, 3) if pd.notna(x) else "")
             threshold_doc = threshold_doc.rename(columns={"hit_rate": "gross_hit_rate"})
 
@@ -272,6 +278,8 @@ def write_case_study(
             "## Strategy Backtest",
             "",
             "The strategy converts the wind residual into a paper price-surprise signal. If XGBoost forecasts wind at least 1.5 GW above the public SMARD forecast, the signal is short German day-ahead price; if it is at least 1.5 GW below, the signal is long. The benchmark applies the same rule to the public SMARD 24-hour forecast ramp alone. P&L is measured against a previous-day same-hour day-ahead price baseline with 0.5 EUR/MWh transaction cost.",
+            "",
+            "Average P&L is reported in EUR/MWh per traded hour. Total P&L is the sum of those hourly price-surprise outcomes for 1 MW clips, so it should be read as EUR per MW of fixed clip size rather than as a standalone EUR/MWh price.",
             "",
             "This is a research backtest, not an executable exchange P&L claim: the entry price is a transparent persistence proxy, not a historical traded forward quote. Economically, a production version would monetize a forecast-error edge through day-ahead to intraday or imbalance settlement, not through DA(t) minus DA(t-24). The goal here is narrower: test whether the wind residual contains directionally useful price information beyond a public forecast-ramp rule after costs.",
             "",
@@ -284,7 +292,7 @@ def write_case_study(
                         "trade_rate",
                         "gross_hit_rate",
                         "avg_net_pnl_eur_mwh",
-                        "total_net_pnl_eur_mwh",
+                        TOTAL_NET_PNL,
                         "sharpe_like_per_trade",
                         "hit_rate_z_stat",
                         "net_pnl_t_stat",

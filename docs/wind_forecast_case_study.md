@@ -66,18 +66,20 @@ For trading or dispatch analysis, the useful signal is the rolling 24-hour-ahead
 
 The strategy converts the wind residual into a paper price-surprise signal. If XGBoost forecasts wind at least 1.5 GW above the public SMARD forecast, the signal is short German day-ahead price; if it is at least 1.5 GW below, the signal is long. The benchmark applies the same rule to the public SMARD 24-hour forecast ramp alone. P&L is measured against a previous-day same-hour day-ahead price baseline with 0.5 EUR/MWh transaction cost.
 
+Average P&L is reported in EUR/MWh per traded hour. Total P&L is the sum of those hourly price-surprise outcomes for 1 MW clips, so it should be read as EUR per MW of fixed clip size rather than as a standalone EUR/MWh price.
+
 This is a research backtest, not an executable exchange P&L claim: the entry price is a transparent persistence proxy, not a historical traded forward quote. Economically, a production version would monetize a forecast-error edge through day-ahead to intraday or imbalance settlement, not through DA(t) minus DA(t-24). The goal here is narrower: test whether the wind residual contains directionally useful price information beyond a public forecast-ramp rule after costs.
 
-| strategy | hours | trades | trade_rate | gross_hit_rate | avg_net_pnl_eur_mwh | total_net_pnl_eur_mwh | sharpe_like_per_trade | hit_rate_z_stat | net_pnl_t_stat |
+| strategy | hours | trades | trade_rate | gross_hit_rate | avg_net_pnl_eur_mwh | total_net_pnl_eur_per_mw_clip | sharpe_like_per_trade | hit_rate_z_stat | net_pnl_t_stat |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | xgboost_wind_residual_signal | 7895 | 787 | 0.100 | 0.529 | 0.240 | 188.720 | 0.005 | 1.604 | 0.143 |
 | public_smard_forecast_ramp_signal | 7895 | 6822 | 0.864 | 0.800 | 20.110 | 137,188.390 | 0.553 | 49.615 | 45.670 |
 
-Read honestly, the residual strategy is a weak research signal rather than a tradable edge: the 1.5 GW rule trades 10.0% of hours, has a 52.9% gross hit rate, earns 0.240 EUR/MWh after costs, and has a Sharpe-like score of only 0.005. The public SMARD forecast-ramp benchmark earns 137,188.39 EUR/MWh versus 188.72 for the residual strategy, so the residual correction does not beat the public-only rule here. Simple strategy-side significance checks are also weak: unclustered gross-hit-rate z-stat 1.60 and per-trade net-P&L t-stat 0.14. Fold-level clustering would make this evidence weaker, not stronger. Fold-level P&L is uneven: 4 of 11 folds are positive, with the best fold in Nov 2025 and the worst in Apr 2026. The full-sample P&L is 188.72 EUR/MWh, but Nov 2025 alone contributes 2,554.32; excluding that fold, the strategy loses 2,365.60 over 706 trades (-3.351 EUR/MWh per trade).
+Read honestly, the residual strategy is a weak research signal rather than a tradable edge: the 1.5 GW rule trades 10.0% of hours, has a 52.9% gross hit rate, earns 0.240 EUR/MWh after costs, and has a Sharpe-like score of only 0.005. Per trade, the public SMARD forecast-ramp benchmark earns 20.110 EUR/MWh versus 0.240 EUR/MWh for the residual strategy. Total P&L over 1 MW hourly clips is 137,188.39 EUR versus 188.72 EUR, so the residual correction does not beat the public-only rule here. Simple strategy-side significance checks are also weak: unclustered gross-hit-rate z-stat 1.60 and per-trade net-P&L t-stat 0.14. Fold-level clustering would make this evidence weaker, not stronger. Fold-level P&L is uneven: 4 of 11 folds are positive, with the best fold in Nov 2025 and the worst in Apr 2026. The full-sample 1 MW-clip P&L is 188.72 EUR, but Nov 2025 alone contributes 2,554.32 EUR; excluding that fold, the strategy loses 2,365.60 EUR over 706 trades (-3.351 EUR/MWh per trade).
 
 Threshold sensitivity is included to avoid pretending one hand-picked trigger tells the whole story.
 
-| strategy | threshold_mw | trades | gross_hit_rate | avg_net_pnl_eur_mwh | total_net_pnl_eur_mwh | sharpe_like_per_trade | net_pnl_t_stat |
+| strategy | threshold_mw | trades | gross_hit_rate | avg_net_pnl_eur_mwh | total_net_pnl_eur_per_mw_clip | sharpe_like_per_trade | net_pnl_t_stat |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | xgboost_wind_residual_signal | 500.0 | 4076 | 0.529 | 0.738 | 3,007.230 | 0.019 | 1.189 |
 | public_smard_forecast_ramp_signal | 500.0 | 7524 | 0.782 | 18.730 | 140,927.000 | 0.499 | 43.271 |

@@ -1,3 +1,3 @@
-strategy,hours,trades,trade_rate,hit_rate,avg_gross_pnl_eur_mwh,avg_net_pnl_eur_mwh,total_net_pnl_eur_mwh,sharpe_like_per_trade,hit_rate_z_stat,net_pnl_t_stat
+strategy,hours,trades,trade_rate,hit_rate,avg_gross_pnl_eur_mwh,avg_net_pnl_eur_mwh,total_net_pnl_eur_per_mw_clip,sharpe_like_per_trade,hit_rate_z_stat,net_pnl_t_stat
 xgboost_wind_residual_signal,7895,787,0.09968334388853704,0.5285895806861499,0.7397966963151205,0.23979669631512046,188.7199999999998,0.005106564226966204,1.6040767630489168,0.14325710309318365
 public_smard_forecast_ramp_signal,7895,6822,0.8640911969601013,0.8003518029903254,20.60970243330402,20.10970243330402,137188.39,0.5529370046432003,49.615354249553704,45.67005273469788

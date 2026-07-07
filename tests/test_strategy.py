@@ -11,7 +11,12 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from wind_forecast.strategy import build_public_forecast_ramp_trade_log, build_trade_log, summarize_strategy  # noqa: E402
+from wind_forecast.strategy import (  # noqa: E402
+    TOTAL_NET_PNL,
+    build_public_forecast_ramp_trade_log,
+    build_trade_log,
+    summarize_strategy,
+)
 
 
 def test_wind_edge_position_direction() -> None:
@@ -54,7 +59,10 @@ def test_strategy_summary_includes_significance_fields() -> None:
 
     assert "hit_rate_z_stat" in overall.columns
     assert "net_pnl_t_stat" in overall.columns
+    assert TOTAL_NET_PNL in overall.columns
+    assert "total_net_pnl_eur_mwh" not in overall.columns
     assert float(overall["hit_rate_z_stat"].iloc[0]) == 1.0
+    assert float(overall[TOTAL_NET_PNL].iloc[0]) == 3.0
 
 
 def test_public_forecast_ramp_benchmark_position_direction() -> None:

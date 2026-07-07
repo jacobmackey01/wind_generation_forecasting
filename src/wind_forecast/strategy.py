@@ -12,6 +12,7 @@ PRICE = "price_da_eur_mwh"
 FORECAST_RAMP = "forecast_wind_total_ramp_24h"
 RESIDUAL_STRATEGY = "xgboost_wind_residual_signal"
 PUBLIC_RAMP_STRATEGY = "public_smard_forecast_ramp_signal"
+TOTAL_NET_PNL = "total_net_pnl_eur_per_mw_clip"
 
 
 def _metrics(frame: pd.DataFrame, label: str) -> dict[str, float | int | str]:
@@ -28,7 +29,7 @@ def _metrics(frame: pd.DataFrame, label: str) -> dict[str, float | int | str]:
                 "hit_rate": np.nan,
                 "avg_gross_pnl_eur_mwh": 0.0,
                 "avg_net_pnl_eur_mwh": 0.0,
-                "total_net_pnl_eur_mwh": 0.0,
+                TOTAL_NET_PNL: 0.0,
                 "sharpe_like_per_trade": np.nan,
                 "hit_rate_z_stat": np.nan,
                 "net_pnl_t_stat": np.nan,
@@ -45,7 +46,7 @@ def _metrics(frame: pd.DataFrame, label: str) -> dict[str, float | int | str]:
             "hit_rate": hit_rate,
             "avg_gross_pnl_eur_mwh": float(trades["gross_pnl_eur_mwh"].mean()),
             "avg_net_pnl_eur_mwh": float(trades["net_pnl_eur_mwh"].mean()),
-            "total_net_pnl_eur_mwh": float(trades["net_pnl_eur_mwh"].sum()),
+            TOTAL_NET_PNL: float(trades["net_pnl_eur_mwh"].sum()),
             "sharpe_like_per_trade": sharpe_like,
             "hit_rate_z_stat": float((hit_rate - 0.5) / np.sqrt(0.25 / len(trades))),
             "net_pnl_t_stat": float(sharpe_like * np.sqrt(len(trades))) if pd.notna(sharpe_like) else np.nan,
