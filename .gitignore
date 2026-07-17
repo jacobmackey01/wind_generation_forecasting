@@ -1,4 +1,8 @@
 .venv/
+.env
+.env.local
+.env.*.local
+.netlify/
 __pycache__/
 *.pyc
 .pytest_cache/
@@ -8,6 +12,7 @@ models/
 .matplotlib/
 outputs/*
 !outputs/feature_importance.csv
+!outputs/forecast_diagnostics.csv
 !outputs/fold_metrics.csv
 !outputs/metrics.csv
 !outputs/qa_checks.csv
@@ -15,3 +20,9 @@ outputs/*
 !outputs/strategy_fold_metrics.csv
 !outputs/strategy_metrics.csv
 !outputs/strategy_threshold_sensitivity.csv
+!outputs/llm/
+outputs/llm/*
+!outputs/llm/analyst_review.json
+!outputs/llm/analyst_review.md
+!outputs/llm/prompt.md
+!outputs/llm/run_log.json

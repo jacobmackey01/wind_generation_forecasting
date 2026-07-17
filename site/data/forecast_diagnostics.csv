@@ -1,0 +1,2 @@
+newey_west_loss_diff_t_stat,xgboost_fold_wins,fold_count,mean_fold_skill_pct,best_fold,best_fold_skill_pct,worst_fold,worst_fold_skill_pct
+0.09240176993795722,7,11,-0.6441451098906824,6,13.38377886170983,4,-22.94197648006728

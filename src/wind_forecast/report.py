@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-import math
 
 import matplotlib
 
@@ -12,6 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from wind_forecast.diagnostics import newey_west_t_stat
 from wind_forecast.features import TARGET
 from wind_forecast.qa import markdown_table
 from wind_forecast.strategy import PUBLIC_RAMP_STRATEGY, RESIDUAL_STRATEGY, TOTAL_NET_PNL
@@ -19,26 +19,6 @@ from wind_forecast.strategy import PUBLIC_RAMP_STRATEGY, RESIDUAL_STRATEGY, TOTA
 
 def _fmt(value: float, digits: int = 2) -> str:
     return f"{float(value):,.{digits}f}"
-
-
-def _newey_west_t_stat(loss_diff: pd.Series, max_lag: int = 24) -> float:
-    """Return a simple Newey-West t-stat for mean loss differential."""
-
-    values = loss_diff.dropna().to_numpy(dtype=float)
-    n = len(values)
-    if n < 3:
-        return float("nan")
-
-    mean = float(values.mean())
-    centered = values - mean
-    long_run_var = float(np.mean(centered**2))
-    for lag in range(1, min(max_lag, n - 1) + 1):
-        covariance = float(np.mean(centered[lag:] * centered[:-lag]))
-        long_run_var += 2.0 * (1.0 - lag / (max_lag + 1.0)) * covariance
-
-    if long_run_var <= 0:
-        return float("nan")
-    return mean / math.sqrt(long_run_var / n)
 
 
 def _fold_month(row: pd.Series) -> str:
@@ -135,7 +115,7 @@ def write_case_study(
     last_fold_end = str(xgb_fold_metrics["fold_end"].iloc[-1])
     smard_abs_error = (predictions[TARGET] - predictions["smard_forecast"]).abs()
     xgb_abs_error = (predictions[TARGET] - predictions["xgboost_residual"]).abs()
-    loss_diff_t = _newey_west_t_stat(smard_abs_error - xgb_abs_error, max_lag=24)
+    loss_diff_t = newey_west_t_stat(smard_abs_error - xgb_abs_error, max_lag=24)
 
     metrics_for_doc = metrics.copy()
     for column in ["mae", "rmse", "bias", "skill_vs_smard_mae_pct"]:
@@ -365,6 +345,12 @@ def write_case_study(
         "For trading or dispatch analysis, the useful signal is the rolling 24-hour-ahead calibrated deviation from the public wind forecast. A positive model residual says actual wind is expected above the published forecast, which is bearish for residual load and power prices all else equal. A negative residual says the opposite. The signal should be invalidated or down-weighted when fresh TSO/weather updates materially change the forecast, when observed wind errors diverge from lagged error patterns, or when grid constraints/curtailment dominate weather-driven production.",
         "",
         *strategy_lines,
+        "## AI/LLM Integration",
+        "",
+        "A programmatic OpenAI step reduces the manual work of translating deterministic validation outputs into a concise analyst review. It reads a compact evidence package from the QA, forecast, fold, strategy, and threshold CSVs, then uses the Responses API with a strict Pydantic output schema. Exact prompts, evidence, output, request metadata, and token usage are logged under `outputs/llm/`.",
+        "",
+        "The LLM is deliberately downstream-only: it cannot change the data, XGBoost forecast, signal, trade log, P&L, or validation metrics. Each generated finding must cite a supplied evidence ID, unknown IDs are rejected, and the displayed metric values are attached by deterministic code after generation. A SHA-256 fingerprint ties the review to the exact evidence snapshot. The resulting review is shown in Streamlit only when that fingerprint matches the current CSVs; the dashboard never calls the API on refresh.",
+        "",
         "## Limitations",
         "",
         "The validation now spans summer, autumn, winter, and spring folds, but it is still only one annual cycle. I would not treat the result as seasonally robust until it is repeated over multiple years and distinct weather regimes.",

@@ -1,0 +1,193 @@
+{
+  "schema_version": 1,
+  "generated_at_utc": "2026-07-16T13:22:41.771657+00:00",
+  "model_requested": "gpt-5.6-luna",
+  "model_returned": "gpt-5.6-luna",
+  "reasoning_effort": "low",
+  "boundary": "Downstream summarization only; no influence on quantitative outputs.",
+  "evidence_fingerprint": "1c82a9799c114018000571309d287fa1269b6d9aadfce4d83957e58c3ad194f5",
+  "evidence": [
+    {
+      "id": "qa.checks",
+      "label": "Pipeline QA checks",
+      "value": "50/50 passed; 13103 hourly rows; failures: none",
+      "interpretation": "The review input passed the pipeline's deterministic data checks."
+    },
+    {
+      "id": "forecast.validation_design",
+      "label": "Forecast validation design",
+      "value": "12 expanding walk-forward folds, 2025-07-06 to 2026-06-30; no random split",
+      "interpretation": "The reported forecast result is out-of-sample in temporal order."
+    },
+    {
+      "id": "forecast.mae_comparison",
+      "label": "XGBoost versus public SMARD MAE",
+      "value": "XGBoost 1,384.67 MW; SMARD 1,389.44 MW; skill +0.34%",
+      "interpretation": "The pooled MAE difference is small relative to the public operational forecast."
+    },
+    {
+      "id": "forecast.significance",
+      "label": "Forecast loss-difference diagnostic",
+      "value": "Newey-West t=0.21; mean fold skill -0.49%",
+      "interpretation": "The forecast result lacks conventional statistical support and is not consistently positive by fold."
+    },
+    {
+      "id": "forecast.fold_dispersion",
+      "label": "Forecast fold dispersion",
+      "value": "XGBoost wins 7/12; best +13.3%; worst -26.4%",
+      "interpretation": "Average performance hides material regime variation."
+    },
+    {
+      "id": "forecast.worst_regime",
+      "label": "Worst forecast fold",
+      "value": "Oct 2025; skill -26.4%",
+      "interpretation": "This is the clearest observed forecast stress regime."
+    },
+    {
+      "id": "forecast.bias",
+      "label": "Forecast bias",
+      "value": "XGBoost -36.9 MW; SMARD -133.5 MW",
+      "interpretation": "Bias should be monitored separately from absolute error."
+    },
+    {
+      "id": "strategy.residual_result",
+      "label": "Residual strategy result",
+      "value": "771 trades; +1.811 EUR/MWh per trade; t=1.07",
+      "interpretation": "The model-derived residual signal does not have conventional statistical support."
+    },
+    {
+      "id": "strategy.fold_concentration",
+      "label": "Residual strategy fold concentration",
+      "value": "6/12 positive folds; best Nov 2025 +2,810.89 EUR; excluding it -1,414.23 EUR",
+      "interpretation": "A large share of the aggregate result depends on one validation month."
+    },
+    {
+      "id": "strategy.public_benchmark",
+      "label": "Public SMARD ramp benchmark",
+      "value": "7400 trades; +20.791 EUR/MWh per trade; 11.5x the residual signal",
+      "interpretation": "The proxy strongly rewards public forecast repricing, so aggregate proxy P&L is not proof of private edge."
+    },
+    {
+      "id": "strategy.price_proxy",
+      "label": "Price-settlement limitation",
+      "value": "DA(t) minus DA(t-24), not an executable day-ahead-to-intraday or imbalance spread",
+      "interpretation": "Neither strategy's proxy P&L should be presented as an executable trading return."
+    },
+    {
+      "id": "strategy.reported_threshold",
+      "label": "Reported residual trigger",
+      "value": "absolute signal >= 1,500 MW",
+      "interpretation": "Hours below the trigger are no-trade observations."
+    },
+    {
+      "id": "strategy.threshold_robustness",
+      "label": "Residual threshold sensitivity",
+      "value": "best of 5 tested points: 1,000 MW, +2.551 EUR/MWh per trade, unadjusted t=2.72",
+      "interpretation": "The best grid point is an in-sample multiple-choice maximum, not holdout evidence."
+    },
+    {
+      "id": "design.information_set",
+      "label": "Auction information-set limitation",
+      "value": "24-hour lagged actual/error features and archived weather are not pinned to strict D-1 noon availability",
+      "interpretation": "The current signal is rolling 24-hour-ahead research, not a strict day-ahead auction implementation."
+    },
+    {
+      "id": "design.sample_scope",
+      "label": "Seasonal scope",
+      "value": "summer, autumn, winter, and spring folds within one annual cycle; no multi-year validation",
+      "interpretation": "One pass through the seasons is insufficient evidence of regime robustness."
+    },
+    {
+      "id": "design.llm_boundary",
+      "label": "LLM role",
+      "value": "downstream summarization only; no influence on QA, features, XGBoost, signals, trades, or metrics",
+      "interpretation": "The AI component reduces manual reporting work without contaminating the quantitative pipeline."
+    }
+  ],
+  "review": {
+    "headline": "Forecast improvement is marginal; residual trading evidence is weak and non-executable",
+    "overall_conclusion": "The pipeline is QA-clean and uses temporally ordered walk-forward validation, but the XGBoost forecast improvement over the public SMARD baseline is small and lacks conventional statistical support. The residual signal is also statistically weak, concentrated in one fold, and evaluated with a non-executable price proxy. This is research evidence, not validated trading edge.",
+    "forecast_assessment": {
+      "assessment": "XGBoost marginally improves pooled MAE versus the public SMARD baseline, but the loss-difference diagnostic lacks conventional statistical support. Results vary materially by fold, including a clear stress regime in October 2025, so the forecast should be treated as broadly comparable to the public baseline rather than demonstrably superior.",
+      "evidence_ids": [
+        "forecast.mae_comparison",
+        "forecast.significance",
+        "forecast.fold_dispersion",
+        "forecast.worst_regime"
+      ]
+    },
+    "strategy_assessment": {
+      "assessment": "The residual strategy result is a weak, statistically unsupported signal. Its aggregate outcome is concentrated in one validation month, while the public SMARD benchmark performs much better on the same proxy, indicating that the proxy rewards public forecast repricing rather than proving incremental private edge. Neither result represents executable trading P&L.",
+      "evidence_ids": [
+        "strategy.residual_result",
+        "strategy.fold_concentration",
+        "strategy.public_benchmark",
+        "strategy.price_proxy"
+      ]
+    },
+    "risk_flags": [
+      {
+        "assessment": "The forecast advantage is not conventionally supported and is not consistently positive across folds.",
+        "evidence_ids": [
+          "forecast.significance",
+          "forecast.fold_dispersion"
+        ]
+      },
+      {
+        "assessment": "The residual strategy depends materially on one validation month and is not robust to excluding that fold.",
+        "evidence_ids": [
+          "strategy.fold_concentration"
+        ]
+      },
+      {
+        "assessment": "The price proxy is not an executable day-ahead-to-intraday or imbalance settlement spread.",
+        "evidence_ids": [
+          "strategy.price_proxy"
+        ]
+      },
+      {
+        "assessment": "The reported threshold sensitivity selects the best of five tested points and is therefore not holdout evidence.",
+        "evidence_ids": [
+          "strategy.threshold_robustness"
+        ]
+      },
+      {
+        "assessment": "The feature information set is not pinned to strict D-1 noon availability, and validation covers only one annual seasonal cycle.",
+        "evidence_ids": [
+          "design.information_set",
+          "design.sample_scope"
+        ]
+      }
+    ],
+    "invalidation_conditions": [
+      "A strict D-1 noon, multi-year out-of-sample test fails to reproduce forecast improvement over SMARD.",
+      "The residual signal remains statistically unsupported or loses its result outside the concentrated validation fold.",
+      "Execution-aware settlement, fees, liquidity, and timing tests fail to show positive net performance."
+    ],
+    "production_next_steps": [
+      "Retain SMARD as the public baseline and test incremental forecast skill with paired, fold-level diagnostics.",
+      "Run multi-year walk-forward validation with a strictly timestamped D-1 auction information set.",
+      "Pre-register thresholds and evaluate them on untouched holdout periods.",
+      "Replace the DA(t) minus DA(t-24) proxy with executable settlement and cost assumptions before any deployment decision.",
+      "Monitor forecast bias and stress performance by regime, especially autumn conditions."
+    ]
+  },
+  "response_id": "resp_07bccd76b39f5827016a58db1c5fc881a280e0801a1fb0a32a",
+  "request_id": "req_70654c6d1a8c493b83da69556551a4c4",
+  "usage": {
+    "input_tokens": 1601,
+    "input_tokens_details": {
+      "cache_write_tokens": 0,
+      "cached_tokens": 1598
+    },
+    "output_tokens": 609,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 2210
+  },
+  "prompts": {
+    "system": "You are a European power-market research reviewer.\nDraft a concise, evidence-bounded review of a wind forecast and its paper trading-signal backtest.\n\nRules:\n- Use only the supplied evidence. Do not invent, recalculate, or extrapolate facts.\n- Do not quote metric values in prose. Cite evidence IDs; the deterministic renderer attaches exact values.\n- Treat an absolute t-statistic below 1.96 as lacking conventional statistical support, while noting that a t-statistic is a diagnostic rather than proof.\n- Distinguish the public SMARD baseline from any incremental XGBoost signal.\n- Never describe the DA(t) minus DA(t-24) proxy as executable P&L or trading advice.\n- State a null or weak result plainly when the evidence supports it.\n- Every forecast assessment, strategy assessment, and risk flag must cite one or more exact evidence IDs.\n- Keep the writing suitable for a trader or hiring reviewer and use ASCII characters only.\n\nThe LLM is a downstream summarizer. It does not alter forecasts, trades, QA checks, or metrics.\n",
+    "user": "Write the structured analyst review from the evidence package below. Use evidence IDs exactly as supplied. Keep risk flags, invalidation conditions, and next steps concise.\n\n{\n  \"evidence\": [\n    {\n      \"id\": \"qa.checks\",\n      \"label\": \"Pipeline QA checks\",\n      \"value\": \"50/50 passed; 13103 hourly rows; failures: none\",\n      \"interpretation\": \"The review input passed the pipeline's deterministic data checks.\"\n    },\n    {\n      \"id\": \"forecast.validation_design\",\n      \"label\": \"Forecast validation design\",\n      \"value\": \"12 expanding walk-forward folds, 2025-07-06 to 2026-06-30; no random split\",\n      \"interpretation\": \"The reported forecast result is out-of-sample in temporal order.\"\n    },\n    {\n      \"id\": \"forecast.mae_comparison\",\n      \"label\": \"XGBoost versus public SMARD MAE\",\n      \"value\": \"XGBoost 1,384.67 MW; SMARD 1,389.44 MW; skill +0.34%\",\n      \"interpretation\": \"The pooled MAE difference is small relative to the public operational forecast.\"\n    },\n    {\n      \"id\": \"forecast.significance\",\n      \"label\": \"Forecast loss-difference diagnostic\",\n      \"value\": \"Newey-West t=0.21; mean fold skill -0.49%\",\n      \"interpretation\": \"The forecast result lacks conventional statistical support and is not consistently positive by fold.\"\n    },\n    {\n      \"id\": \"forecast.fold_dispersion\",\n      \"label\": \"Forecast fold dispersion\",\n      \"value\": \"XGBoost wins 7/12; best +13.3%; worst -26.4%\",\n      \"interpretation\": \"Average performance hides material regime variation.\"\n    },\n    {\n      \"id\": \"forecast.worst_regime\",\n      \"label\": \"Worst forecast fold\",\n      \"value\": \"Oct 2025; skill -26.4%\",\n      \"interpretation\": \"This is the clearest observed forecast stress regime.\"\n    },\n    {\n      \"id\": \"forecast.bias\",\n      \"label\": \"Forecast bias\",\n      \"value\": \"XGBoost -36.9 MW; SMARD -133.5 MW\",\n      \"interpretation\": \"Bias should be monitored separately from absolute error.\"\n    },\n    {\n      \"id\": \"strategy.residual_result\",\n      \"label\": \"Residual strategy result\",\n      \"value\": \"771 trades; +1.811 EUR/MWh per trade; t=1.07\",\n      \"interpretation\": \"The model-derived residual signal does not have conventional statistical support.\"\n    },\n    {\n      \"id\": \"strategy.fold_concentration\",\n      \"label\": \"Residual strategy fold concentration\",\n      \"value\": \"6/12 positive folds; best Nov 2025 +2,810.89 EUR; excluding it -1,414.23 EUR\",\n      \"interpretation\": \"A large share of the aggregate result depends on one validation month.\"\n    },\n    {\n      \"id\": \"strategy.public_benchmark\",\n      \"label\": \"Public SMARD ramp benchmark\",\n      \"value\": \"7400 trades; +20.791 EUR/MWh per trade; 11.5x the residual signal\",\n      \"interpretation\": \"The proxy strongly rewards public forecast repricing, so aggregate proxy P&L is not proof of private edge.\"\n    },\n    {\n      \"id\": \"strategy.price_proxy\",\n      \"label\": \"Price-settlement limitation\",\n      \"value\": \"DA(t) minus DA(t-24), not an executable day-ahead-to-intraday or imbalance spread\",\n      \"interpretation\": \"Neither strategy's proxy P&L should be presented as an executable trading return.\"\n    },\n    {\n      \"id\": \"strategy.reported_threshold\",\n      \"label\": \"Reported residual trigger\",\n      \"value\": \"absolute signal >= 1,500 MW\",\n      \"interpretation\": \"Hours below the trigger are no-trade observations.\"\n    },\n    {\n      \"id\": \"strategy.threshold_robustness\",\n      \"label\": \"Residual threshold sensitivity\",\n      \"value\": \"best of 5 tested points: 1,000 MW, +2.551 EUR/MWh per trade, unadjusted t=2.72\",\n      \"interpretation\": \"The best grid point is an in-sample multiple-choice maximum, not holdout evidence.\"\n    },\n    {\n      \"id\": \"design.information_set\",\n      \"label\": \"Auction information-set limitation\",\n      \"value\": \"24-hour lagged actual/error features and archived weather are not pinned to strict D-1 noon availability\",\n      \"interpretation\": \"The current signal is rolling 24-hour-ahead research, not a strict day-ahead auction implementation.\"\n    },\n    {\n      \"id\": \"design.sample_scope\",\n      \"label\": \"Seasonal scope\",\n      \"value\": \"summer, autumn, winter, and spring folds within one annual cycle; no multi-year validation\",\n      \"interpretation\": \"One pass through the seasons is insufficient evidence of regime robustness.\"\n    },\n    {\n      \"id\": \"design.llm_boundary\",\n      \"label\": \"LLM role\",\n      \"value\": \"downstream summarization only; no influence on QA, features, XGBoost, signals, trades, or metrics\",\n      \"interpretation\": \"The AI component reduces manual reporting work without contaminating the quantitative pipeline.\"\n    }\n  ]\n}"
+  }
+}

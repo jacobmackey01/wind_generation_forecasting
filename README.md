@@ -4,6 +4,12 @@ Prototype forecasting hourly German wind generation with public data, XGBoost, w
 
 The project is deliberately built as a candidate-facing case-study repo: reproducible ingestion, QA checks, feature engineering, baselines, an XGBoost improved model, honest time-series validation, a trading-signal research layer, and a short written interpretation of where the model helps or fails.
 
+## Frozen D-1 Specification
+
+[`docs/forecast_issue_time_specification.md`](docs/forecast_issue_time_specification.md) freezes the proposed production-oriented forecast before any parameter tuning: 11:00 Europe/Berlin D-1 issue time, exact weather-model run, conservative lag cutoffs, grouped walk-forward validation, inference outputs, prospective holdout, and model-versioning requirements.
+
+The existing May and June results do not comply with that stricter information set. They remain historical rolling-calibration research outputs and must not be presented as strict day-ahead auction forecasts. No XGBoost parameter search should begin until the specification's mandatory issue-time QA gates pass.
+
 ## Market And Target
 
 - Market: Germany (`DE`)
@@ -56,7 +62,39 @@ python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 python scripts/run_pipeline.py --start 2025-01-01 --end 2026-05-31
+streamlit run dashboard.py
 ```
+
+By default, each full pipeline run generates a fresh downstream AI review after all deterministic outputs are complete. Use `--skip-llm-review` for an offline or zero-cost run. To refresh only the AI review from existing CSV outputs:
+
+```powershell
+python scripts/run_llm_review.py
+```
+
+The local key is read from `.env.local`, which is ignored by Git; `.env.example` documents the expected variables without containing a credential. The legacy-explicit `--run-llm-review` flag is also accepted, although the LLM step is now the default.
+
+## AI/LLM Integration
+
+The programmatic OpenAI component reduces the manual work of turning validation outputs into a concise trader/reviewer memo. It uses `gpt-5.6-luna` with low reasoning through the Responses API and parses a strict Pydantic schema.
+
+The LLM receives a compact evidence package derived from the QA, model, fold, strategy, and threshold CSVs. It does not receive raw credentials, change forecasts, calculate P&L, choose trades, or feed back into XGBoost. Narrative findings must cite supplied evidence IDs; an unknown or missing evidence ID causes the response to be rejected. Exact metric values are attached by deterministic code after generation. A SHA-256 evidence fingerprint ties the saved review to the current CSV snapshot, and Streamlit refuses to render a stale review after a different pipeline run.
+
+The component writes:
+
+- `outputs/llm/analyst_review.md`: human-readable review
+- `outputs/llm/analyst_review.json`: structured dashboard artifact
+- `outputs/llm/prompt.md`: exact system and user prompts
+- `outputs/llm/run_log.json`: prompts, evidence, structured response, model, request metadata, and token usage
+
+Streamlit displays the latest saved review as a downstream interpretation panel. Page refreshes never call the API, avoiding accidental spend and keeping the API key out of the frontend.
+
+## Validation Dashboard
+
+The Streamlit dashboard is deliberately built around the negative result rather than a flattering model headline. It shows fold-level MAE against SMARD, the forecast significance diagnostic, cumulative strategy proxy P&L, the November concentration, threshold sensitivity, and the public forecast-ramp benchmark on the same evidence base. The large public-ramp result is presented as a diagnostic that the DA(t) minus DA(t-24) proxy rewards public-information repricing, not as evidence of a free executable edge.
+
+It runs from the compact tracked CSVs in `outputs/`, so a fresh clone can open the dashboard immediately. Re-running the pipeline refreshes those inputs before the dashboard is launched.
+
+The tracked `outputs/` directory contains the June-extended rerun. The static Netlify bundle in `site/data/` deliberately preserves the original May case-study snapshot, including its matching LLM review, so the public dashboard remains a reproducible record of that release rather than silently changing when local outputs are regenerated. See `docs/run_comparison_may_vs_june.md` for a like-for-like comparison.
 
 ## Outputs
 
@@ -66,6 +104,7 @@ Running the pipeline writes:
 - `outputs/qa_checks.csv`
 - `outputs/qa_report.md`
 - `outputs/metrics.csv`
+- `outputs/forecast_diagnostics.csv`
 - `outputs/fold_metrics.csv`
 - `outputs/predictions.csv`
 - `outputs/feature_importance.csv`
@@ -73,8 +112,13 @@ Running the pipeline writes:
 - `outputs/strategy_metrics.csv`
 - `outputs/strategy_fold_metrics.csv`
 - `outputs/strategy_threshold_sensitivity.csv`
+- `outputs/llm/analyst_review.md`
+- `outputs/llm/analyst_review.json`
+- `outputs/llm/prompt.md`
+- `outputs/llm/run_log.json`
 - `outputs/submission.csv`
 - `outputs/figures/*.png`
+- `docs/forecast_issue_time_specification.md`
 - `docs/wind_forecast_case_study.md`
 
 The GitHub repository tracks the reproducible code, docs, and compact QA/metric outputs. Large generated files such as the processed hourly dataset, full prediction table, submission CSV, full trade log, and figures are intentionally left as pipeline outputs rather than source-controlled assets.
