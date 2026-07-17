@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Walk-forward validation of an XGBoost German wind-generation forecast and its paper wind-to-price signal.">
+  <title>German Wind Forecast Validation</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  <script defer src="/app.js"></script>
+</head>
+<body>
+<div class="page-shell">
+  <header class="masthead">
+    <div class="masthead-inner">
+      <div class="title-block">
+        <p class="eyebrow">EUROPEAN POWER MARKET RESEARCH</p>
+        <h1>German wind forecast validation</h1>
+        <p class="subtitle">XGBoost residual calibration | 11 expanding walk-forward folds | paper wind-to-price strategy</p>
+      </div>
+      <a class="source-link" href="https://github.com/jacobmackey01/wind_generation_forecasting" target="_blank" rel="noreferrer">View source</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="conclusion-band" aria-label="Headline conclusion">
+      <strong>No reliable incremental edge.</strong>
+      <span>Forecast skill is within noise and residual strategy P&amp;L is statistically weak. The large public-ramp result diagnoses proxy structure; it is not evidence of free executable profit.</span>
+    </section>
+
+    <section class="metric-grid" aria-label="Headline metrics">
+      <article class="metric-card">
+        <p>Forecast MAE skill vs SMARD</p>
+        <strong id="forecast-skill">--</strong>
+        <span id="forecast-context">Loading validation result</span>
+      </article>
+      <article class="metric-card">
+        <p>Residual net P&amp;L / trade</p>
+        <strong id="residual-pnl">--</strong>
+        <span id="residual-context">Loading strategy result</span>
+      </article>
+      <article class="metric-card">
+        <p>Public-ramp proxy / trade</p>
+        <strong id="public-pnl">--</strong>
+        <span id="public-context">Loading benchmark result</span>
+      </article>
+      <article class="metric-card">
+        <p>Positive residual folds</p>
+        <strong id="positive-folds">--</strong>
+        <span id="fold-context">Loading fold concentration</span>
+      </article>
+    </section>
+
+    <section class="dashboard-section" aria-labelledby="forecast-heading">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">FORECAST VALIDATION</p>
+          <h2 id="forecast-heading">Fold-by-fold MAE against the public forecast</h2>
+        </div>
+        <p id="forecast-summary" class="section-summary">Loading fold results...</p>
+      </div>
+      <div class="chart-shell chart-large">
+        <canvas id="mae-chart" role="img" aria-label="Monthly mean absolute error for the public SMARD forecast and XGBoost residual model across eleven validation folds"></canvas>
+      </div>
+      <p class="chart-note"><strong>Read:</strong> a model with repeatable edge should beat the public forecast across regimes. Here, October is the clearest failure and the pooled gain is indistinguishable from noise.</p>
+    </section>
+
+    <section class="dashboard-section strategy-band" aria-labelledby="strategy-heading">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">STRATEGY EVIDENCE</p>
+          <h2 id="strategy-heading">Cumulative proxy P&amp;L on one shared scale</h2>
+        </div>
+        <p class="section-summary">Same validation hours, 0.5 EUR/MWh cost, one MW hourly clips.</p>
+      </div>
+      <div class="chart-shell chart-large">
+        <canvas id="pnl-chart" role="img" aria-label="Cumulative paper profit and loss for the XGBoost residual signal and public SMARD forecast ramp benchmark"></canvas>
+      </div>
+      <p class="chart-note"><strong>The scale is the finding:</strong> the public rule reaches 137,188.39 EUR while the residual signal finishes at 188.72 EUR. Because both use DA(t) minus DA(t-24), that gap shows the proxy rewards public-information repricing; it does not establish an unarbitraged strategy.</p>
+
+      <div class="evidence-grid">
+        <div>
+          <h3>Residual P&amp;L by validation fold</h3>
+          <div class="chart-shell chart-medium">
+            <canvas id="fold-pnl-chart" role="img" aria-label="Paper profit and loss for the XGBoost residual signal by validation month"></canvas>
+          </div>
+        </div>
+        <aside class="concentration-panel" aria-labelledby="concentration-heading">
+          <h3 id="concentration-heading">What survives the best fold?</h3>
+          <div class="compact-metric">
+            <span>Full sample</span>
+            <strong id="total-residual-pnl">--</strong>
+            <small>EUR per 1 MW hourly clips</small>
+          </div>
+          <div class="compact-metric emphasis-negative">
+            <span id="exclude-label">Excluding best month</span>
+            <strong id="pnl-ex-best">--</strong>
+            <small id="trades-ex-best">-- trades</small>
+          </div>
+          <div class="compact-metric">
+            <span>Residual significance</span>
+            <strong id="residual-t-stat">--</strong>
+            <small>No statistical support</small>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="dashboard-section" aria-labelledby="threshold-heading">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">THRESHOLD ROBUSTNESS</p>
+          <h2 id="threshold-heading">Net P&amp;L per trade across the pre-defined grid</h2>
+        </div>
+        <p class="section-summary">The selected 1,500 MW threshold is marked; every point uses the same walk-forward folds.</p>
+      </div>
+      <div class="chart-shell chart-large">
+        <canvas id="threshold-chart" role="img" aria-label="Average paper profit and loss per trade for residual and public-ramp strategies across five wind-signal thresholds"></canvas>
+      </div>
+      <p class="chart-note"><strong>No stable residual threshold:</strong> the rule peaks at 1,000 MW and turns negative above 2,000 MW. The best grid point is an unadjusted five-choice maximum, not holdout evidence.</p>
+    </section>
+
+    <section class="dashboard-section ai-review-band" aria-labelledby="ai-heading">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">AI ANALYST REVIEW</p>
+          <h2 id="ai-heading">Evidence-bounded downstream interpretation</h2>
+        </div>
+        <p id="ai-meta" class="section-summary">Loading the saved review...</p>
+      </div>
+
+      <div class="ai-headline">
+        <h3 id="ai-headline">Loading analyst conclusion</h3>
+        <p id="ai-conclusion"></p>
+      </div>
+
+      <div class="ai-assessment-grid">
+        <article class="ai-assessment forecast-assessment">
+          <h3>Forecast assessment</h3>
+          <p id="ai-forecast-assessment"></p>
+          <ul id="ai-forecast-evidence" class="evidence-list"></ul>
+        </article>
+        <article class="ai-assessment strategy-assessment">
+          <h3>Strategy assessment</h3>
+          <p id="ai-strategy-assessment"></p>
+          <ul id="ai-strategy-evidence" class="evidence-list"></ul>
+        </article>
+      </div>
+
+      <div class="ai-review-grid">
+        <div>
+          <h3>Risk flags</h3>
+          <ul id="ai-risks" class="review-list"></ul>
+        </div>
+        <div>
+          <h3>Invalidation conditions</h3>
+          <ul id="ai-invalidations" class="review-list"></ul>
+        </div>
+        <div>
+          <h3>Production next steps</h3>
+          <ul id="ai-next-steps" class="review-list"></ul>
+        </div>
+      </div>
+
+      <p class="chart-note"><strong>Boundary:</strong> the LLM summarizes deterministic outputs after the run. It cannot alter QA, forecasts, trades, or metrics, and every displayed evidence value comes from the original May snapshot.</p>
+      <p id="ai-load-error" class="load-error" hidden>The saved AI review could not be loaded.</p>
+    </section>
+
+    <section class="method-band" aria-labelledby="method-heading">
+      <div>
+        <p class="section-kicker">EXECUTION CAVEAT</p>
+        <h2 id="method-heading">Research proxy, not an executable backtest</h2>
+      </div>
+      <p>P&amp;L uses DA(t) minus DA(t-24), not auction-to-intraday or imbalance settlement marks. Weather rows and 24-hour lags are also not pinned to strict D-1 noon gate closure. Production validation requires issue-time features and executable settlement prices.</p>
+    </section>
+
+    <noscript>This dashboard requires JavaScript to render its source-backed charts.</noscript>
+    <p id="load-error" class="load-error" hidden>Dashboard data could not be loaded. The source CSV files may be missing.</p>
+  </main>
+
+  <footer>
+    <span>Source: SMARD / Bundesnetzagentur, Open-Meteo historical forecasts</span>
+    <span>Validation window: Jul 2025 to May 2026</span>
+  </footer>
+</div>
+</body>
+</html>

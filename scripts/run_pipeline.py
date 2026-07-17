@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+from dotenv import load_dotenv
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,6 +16,7 @@ if str(SRC) not in sys.path:
 os.environ.setdefault("MPLCONFIGDIR", str(ROOT / ".matplotlib"))
 
 from wind_forecast.features import add_features  # noqa: E402
+from wind_forecast.diagnostics import build_forecast_diagnostics  # noqa: E402
 from wind_forecast.models import WalkForwardConfig, validate_walk_forward  # noqa: E402
 from wind_forecast.qa import qa_checks, write_qa_report  # noqa: E402
 from wind_forecast.report import write_case_study, write_figures  # noqa: E402
@@ -32,6 +34,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--step-days", type=int, default=30)
     parser.add_argument("--signal-threshold-mw", type=float, default=1500.0)
     parser.add_argument("--transaction-cost-eur-mwh", type=float, default=0.5)
+    llm_group = parser.add_mutually_exclusive_group()
+    llm_group.add_argument(
+        "--run-llm-review",
+        action="store_true",
+        help="Call OpenAI after deterministic outputs (enabled by default; retained for explicit commands).",
+    )
+    llm_group.add_argument(
+        "--skip-llm-review",
+        action="store_true",
+        help="Skip the downstream OpenAI review for an offline or zero-cost run.",
+    )
+    parser.add_argument("--llm-model", default="gpt-5.6-luna")
+    parser.add_argument("--llm-reasoning-effort", choices=["none", "low", "medium", "high"], default="low")
     parser.add_argument("--no-cache", action="store_true", help="Force re-download of raw public data.")
     return parser.parse_args()
 
@@ -39,6 +54,11 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     use_cache = not args.no_cache
+    run_ai_review = not args.skip_llm_review
+    if run_ai_review:
+        load_dotenv(ROOT / ".env.local", override=False)
+        if not os.getenv("OPENAI_API_KEY"):
+            raise SystemExit("OPENAI_API_KEY is missing. Add it to .env.local or use --skip-llm-review.")
 
     raw_dir = ROOT / "data" / "raw"
     processed_dir = ROOT / "data" / "processed"
@@ -74,6 +94,8 @@ def main() -> None:
     fold_metrics.to_csv(outputs_dir / "fold_metrics.csv", index=False)
     predictions.to_csv(outputs_dir / "predictions.csv", index=False)
     feature_importance.to_csv(outputs_dir / "feature_importance.csv", index=False)
+    forecast_diagnostics = build_forecast_diagnostics(predictions, fold_metrics)
+    forecast_diagnostics.to_csv(outputs_dir / "forecast_diagnostics.csv", index=False)
 
     submission = predictions[["id", "xgboost_residual"]].rename(columns={"xgboost_residual": "y_pred"})
     submission.to_csv(outputs_dir / "submission.csv", index=False)
@@ -102,6 +124,16 @@ def main() -> None:
         strategy_thresholds=strategy_thresholds,
         path=docs_dir / "wind_forecast_case_study.md",
     )
+
+    if run_ai_review:
+        from wind_forecast.llm_review import run_llm_review
+
+        review_paths = run_llm_review(
+            outputs_dir=outputs_dir,
+            model=args.llm_model,
+            reasoning_effort=args.llm_reasoning_effort,
+        )
+        print(f"AI analyst review: {review_paths['markdown']}")
 
     xgb = metrics.loc[metrics["model"] == "xgboost_residual"].iloc[0]
     smard = metrics.loc[metrics["model"] == "smard_forecast"].iloc[0]
