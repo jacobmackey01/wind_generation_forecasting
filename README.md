@@ -55,6 +55,21 @@ Default setup:
 
 The July rerun pins the direct package versions in `requirements.txt`, including `xgboost==3.3.0`, because earlier broad version ranges moved the fitted XGBoost result slightly. That version drift did not change the conclusion, but it should be controlled in a case-study repo.
 
+`outputs/forecast_diagnostics.csv` now records the mean hourly loss difference, lag-24 Newey-West standard error and 95% confidence interval, the corresponding approximate skill interval, and a delivery-day block-bootstrap interval. For the June reference run, both interval estimates span zero; the small pooled improvement is therefore not distinguishable from no incremental edge.
+
+## Prospective Holdout Protection
+
+The 2026-07-01 to 2026-09-30 target period is mechanically locked. `scripts/run_pipeline.py` rejects any overlapping date range immediately after parsing arguments, before data ingestion, model fitting, target metrics, or an OpenAI call. This remains true after the embargo ends: the historical research pipeline is not the route for scoring the holdout.
+
+A separate release-seal utility is ready for the future strict D-1 model:
+
+```powershell
+python scripts/holdout_manifest.py freeze --model-manifest manifests/promoted_model.json --predictions outputs/holdout_predictions.csv
+python scripts/holdout_manifest.py verify --manifest manifests/holdout_release_manifest.json
+```
+
+The freeze command requires a `WG-D1-001` model promoted before the holdout, rejects prediction CSVs containing target columns, and writes a manifest plus SHA-256 sidecar over the model manifest and predictions. Verification rejects scoring before 2026-10-01, a late-frozen manifest, or any changed artifact. No real release manifest is created yet because the strict issue-time pipeline has not produced a promoted model or prospective predictions. When it does, both seal files must be committed before target scoring; the Git history supplies the external timestamp that a locally regenerated hash cannot prove by itself.
+
 ## Quick Start
 
 ```powershell

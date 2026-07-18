@@ -106,6 +106,20 @@ xgb_metric = metrics.loc[metrics["model"] == "xgboost_residual"].iloc[0]
 residual_metric = strategy_metrics.loc[strategy_metrics["strategy"] == RESIDUAL_STRATEGY].iloc[0]
 public_metric = strategy_metrics.loc[strategy_metrics["strategy"] == PUBLIC_RAMP_STRATEGY].iloc[0]
 per_trade_ratio = float(public_metric["avg_net_pnl_eur_mwh"] / residual_metric["avg_net_pnl_eur_mwh"])
+has_forecast_interval = {
+    "newey_west_skill_ci_95_lower_pct",
+    "newey_west_skill_ci_95_upper_pct",
+}.issubset(diagnostics.index)
+if has_forecast_interval:
+    forecast_interval_caption = (
+        f"95% skill CI [{float(diagnostics['newey_west_skill_ci_95_lower_pct']):+.2f}%, "
+        f"{float(diagnostics['newey_west_skill_ci_95_upper_pct']):+.2f}%] | "
+        f"NW t = {float(diagnostics['newey_west_loss_diff_t_stat']):.2f}"
+    )
+else:
+    forecast_interval_caption = (
+        f"NW t = {float(diagnostics['newey_west_loss_diff_t_stat']):.2f} | not significant"
+    )
 
 st.title("German Wind Forecast Validation")
 st.caption(
@@ -123,7 +137,7 @@ kpi_columns = st.columns(4)
 with kpi_columns[0]:
     with st.container(border=True):
         st.metric("Forecast MAE skill vs SMARD", f"{float(xgb_metric['skill_vs_smard_mae_pct']):+.2f}%")
-        st.caption(f"NW t = {float(diagnostics['newey_west_loss_diff_t_stat']):.2f} | not significant")
+        st.caption(forecast_interval_caption)
 with kpi_columns[1]:
     with st.container(border=True):
         st.metric("Residual net P&L / trade", f"{float(residual_metric['avg_net_pnl_eur_mwh']):+.3f}")
@@ -174,7 +188,14 @@ st.plotly_chart(mae_fig, width="stretch", config={"displayModeBar": False})
 st.caption(
     f"XGBoost beat SMARD in {int(diagnostics['xgboost_fold_wins'])} of {int(diagnostics['fold_count'])} folds. "
     f"Pooled skill is {float(xgb_metric['skill_vs_smard_mae_pct']):.2f}% and the Newey-West t-stat is "
-    f"{float(diagnostics['newey_west_loss_diff_t_stat']):.2f}."
+    f"{float(diagnostics['newey_west_loss_diff_t_stat']):.2f}. "
+    + (
+        f"The approximate 95% skill interval is "
+        f"[{float(diagnostics['newey_west_skill_ci_95_lower_pct']):+.2f}%, "
+        f"{float(diagnostics['newey_west_skill_ci_95_upper_pct']):+.2f}%]."
+        if has_forecast_interval
+        else ""
+    )
 )
 
 st.subheader("Strategy evidence")

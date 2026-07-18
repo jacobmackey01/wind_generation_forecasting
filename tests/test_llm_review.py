@@ -87,6 +87,7 @@ def test_evidence_is_reconciled_and_contains_pipeline_boundaries() -> None:
     assert "strategy.price_proxy" in evidence_map
     assert "design.llm_boundary" in evidence_map
     assert "no influence" in evidence_map["design.llm_boundary"]["value"]
+    assert "95% CI" in evidence_map["forecast.significance"]["value"]
 
 
 def test_unknown_evidence_id_is_rejected() -> None:

@@ -216,6 +216,38 @@ def build_review_evidence(outputs_dir: Path) -> list[dict[str, str]]:
     pnl_ex_best = residual_total - best_fold_pnl
     validation_start = xgb_folds["fold_start"].min().strftime("%Y-%m-%d")
     validation_end = xgb_folds["fold_end"].max().strftime("%Y-%m-%d")
+    interval_columns = {
+        "loss_diff_mean_mw",
+        "newey_west_loss_diff_ci_95_lower_mw",
+        "newey_west_loss_diff_ci_95_upper_mw",
+        "newey_west_skill_ci_95_lower_pct",
+        "newey_west_skill_ci_95_upper_pct",
+        "day_block_bootstrap_skill_ci_95_lower_pct",
+        "day_block_bootstrap_skill_ci_95_upper_pct",
+    }
+    if interval_columns.issubset(diagnostics.columns):
+        significance_value = (
+            f"mean loss difference {_fmt(diag['loss_diff_mean_mw'], 2, signed=True)} MW; "
+            f"Newey-West 95% CI [{_fmt(diag['newey_west_loss_diff_ci_95_lower_mw'], 2, signed=True)}, "
+            f"{_fmt(diag['newey_west_loss_diff_ci_95_upper_mw'], 2, signed=True)}] MW; "
+            f"skill CI [{_fmt(diag['newey_west_skill_ci_95_lower_pct'], 2, signed=True)}, "
+            f"{_fmt(diag['newey_west_skill_ci_95_upper_pct'], 2, signed=True)}]%; "
+            f"day-block skill CI [{_fmt(diag['day_block_bootstrap_skill_ci_95_lower_pct'], 2, signed=True)}, "
+            f"{_fmt(diag['day_block_bootstrap_skill_ci_95_upper_pct'], 2, signed=True)}]%; "
+            f"t={_fmt(diag['newey_west_loss_diff_t_stat'], 2)}; "
+            f"mean fold skill {_fmt(diag['mean_fold_skill_pct'], 2, signed=True)}%"
+        )
+        significance_interpretation = (
+            "The uncertainty intervals include zero, and the forecast result is not consistently positive by fold."
+        )
+    else:
+        significance_value = (
+            f"Newey-West t={_fmt(diag['newey_west_loss_diff_t_stat'], 2)}; "
+            f"mean fold skill {_fmt(diag['mean_fold_skill_pct'], 2, signed=True)}%"
+        )
+        significance_interpretation = (
+            "The forecast result lacks conventional statistical support and is not consistently positive by fold."
+        )
 
     return [
         _evidence_item(
@@ -239,8 +271,8 @@ def build_review_evidence(outputs_dir: Path) -> list[dict[str, str]]:
         _evidence_item(
             "forecast.significance",
             "Forecast loss-difference diagnostic",
-            f"Newey-West t={_fmt(diag['newey_west_loss_diff_t_stat'], 2)}; mean fold skill {_fmt(diag['mean_fold_skill_pct'], 2, signed=True)}%",
-            "The forecast result lacks conventional statistical support and is not consistently positive by fold.",
+            significance_value,
+            significance_interpretation,
         ),
         _evidence_item(
             "forecast.fold_dispersion",

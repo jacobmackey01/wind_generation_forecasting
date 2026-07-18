@@ -17,6 +17,7 @@ os.environ.setdefault("MPLCONFIGDIR", str(ROOT / ".matplotlib"))
 
 from wind_forecast.features import add_features  # noqa: E402
 from wind_forecast.diagnostics import build_forecast_diagnostics  # noqa: E402
+from wind_forecast.holdout import HoldoutPolicyError, enforce_development_window  # noqa: E402
 from wind_forecast.models import WalkForwardConfig, validate_walk_forward  # noqa: E402
 from wind_forecast.qa import qa_checks, write_qa_report  # noqa: E402
 from wind_forecast.report import write_case_study, write_figures  # noqa: E402
@@ -53,6 +54,10 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    try:
+        enforce_development_window(args.start, args.end)
+    except HoldoutPolicyError as exc:
+        raise SystemExit(f"Holdout protection: {exc}") from exc
     use_cache = not args.no_cache
     run_ai_review = not args.skip_llm_review
     if run_ai_review:
@@ -122,6 +127,7 @@ def main() -> None:
         strategy_metrics=strategy_metrics,
         strategy_fold_metrics=strategy_fold_metrics,
         strategy_thresholds=strategy_thresholds,
+        forecast_diagnostics=forecast_diagnostics,
         path=docs_dir / "wind_forecast_case_study.md",
     )
 

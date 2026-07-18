@@ -24,6 +24,7 @@ def test_dashboard_renders_from_tracked_outputs() -> None:
         f"{int(diagnostics['fold_count'])} expanding walk-forward folds" in caption.value
         for caption in app.caption
     )
+    assert any("95% skill CI" in caption.value for caption in app.caption)
     assert app.metric[1].value == (
         f"{strategy_metrics.loc['xgboost_wind_residual_signal', 'avg_net_pnl_eur_mwh']:+.3f}"
     )
@@ -44,4 +45,8 @@ def test_dashboard_renders_from_tracked_outputs() -> None:
     artifact_path = ROOT / "outputs" / "llm" / "analyst_review.json"
     if artifact_path.exists():
         artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
-        assert any(artifact["review"]["headline"] in markdown.value for markdown in app.markdown)
+        headline_rendered = any(artifact["review"]["headline"] in markdown.value for markdown in app.markdown)
+        stale_warning_rendered = any(
+            "different pipeline output snapshot" in warning.value for warning in app.warning
+        )
+        assert headline_rendered or stale_warning_rendered
