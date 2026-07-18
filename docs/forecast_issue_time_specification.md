@@ -152,6 +152,13 @@ All data through 2026-06-30 are development history because their outcomes have 
 
 The period from 2026-07-01 through 2026-09-30 is a locked prospective holdout. No aggregate forecast or trading performance for that period is to be calculated or inspected before 2026-10-01. Partial-period operational QA may check schema, timestamps, and missingness only, without target-based metrics.
 
+The repository enforces this mechanically in two stages:
+
+1. The existing research pipeline fails before ingestion whenever its requested dates overlap the holdout. It cannot become a holdout scorer merely because the calendar passes 2026-10-01.
+2. A future dedicated scoring route must first verify a hash-sealed release manifest containing a model manifest promoted before 2026-07-01 and a target-free prediction CSV. The manifest and its SHA-256 sidecar must be frozen before scoring, and target access remains embargoed until 2026-10-01 Europe/Berlin.
+
+No holdout release manifest exists at this specification stage because no `WG-D1-001` model has passed the issue-time gates or been promoted. Once one exists, the manifest and sidecar must be committed before target scoring. The repository timestamp then provides external audit evidence; a local timestamp or regenerable hash alone is not immutable proof of when the decision was frozen.
+
 ## 8. Metrics And Inference
 
 Primary model-selection metric:
@@ -176,6 +183,8 @@ For each baseline loss differential, the pipeline must save:
 - Normal-approximation 95% confidence interval in MW.
 - Approximate skill interval in percent, explicitly treating baseline MAE as fixed.
 - Delivery-day block-bootstrap confidence interval as a sensitivity check.
+
+The shared diagnostics implementation now emits these fields for the historical residual-versus-SMARD reference run. That implementation work does not make the historical model compliant with the stricter `WG-D1-001` information set or equal-information baseline contract.
 
 A reliable incremental-edge claim requires all of the following:
 

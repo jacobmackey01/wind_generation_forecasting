@@ -37,7 +37,7 @@ Baselines are previous-week same-hour persistence, train-fold hour/month climato
 
 XGBoost does not show a reliable edge over the SMARD forecast in this backtest: pooled MAE is only 0.34% better, while average fold skill is -0.49%.
 
-A simple Newey-West lag-24 t-stat on the hourly absolute-error loss differential is 0.21. This is included only as a sanity check, but it supports the same conclusion: the observed pooled improvement is noise, not a statistically robust edge.
+The mean hourly absolute-error improvement is 4.77 MW. Its lag-24 Newey-West standard error is 23.08 MW, giving t = 0.21 and a normal 95% interval of [-40.47, 50.00] MW. Dividing by the fixed SMARD MAE gives an approximate skill interval of [-2.91, 3.60]%. A delivery-day block bootstrap gives [-40.91, 50.27] MW. Both intervals span zero, so the data do not distinguish the small pooled improvement from no incremental edge.
 
 The previous-week persistence MAE was 11,311.50 MW and the hour/month climatology MAE was 8,695.84 MW. The serious benchmark is SMARD: MAE 1,389.44 MW versus XGBoost 1,384.67 MW. XGBoost beat SMARD in 7 of 12 folds, but the fold dispersion is large enough that I would not claim a production edge from this evidence alone.
 
@@ -105,6 +105,8 @@ The LLM is deliberately downstream-only: it cannot change the data, XGBoost fore
 The validation now spans summer, autumn, winter, and spring folds, but it is still only one annual cycle. I would not treat the result as seasonally robust until it is repeated over multiple years and distinct weather regimes.
 
 The current feature set is valid for a rolling 24-hour-ahead information set. It is not a true prompt/intraday model; once recent metered actuals are available, a previous-hour persistence benchmark should be tested and would likely be hard to beat. It is also not a strict day-ahead auction signal: the German day-ahead auction clears around D-1 noon, so 24-hour lagged actuals would be unavailable for some later delivery hours. The weather covariates are archived near-delivery forecast values rather than D-1 noon model-run snapshots, so they should be treated as post-auction for strict day-ahead trading. For a strict D-1 noon forecast, all lagged features and weather rows should be recomputed relative to the issue timestamp.
+
+The 2026-07-01 to 2026-09-30 prospective holdout remains unscored. The research CLI rejects any overlapping date range before ingestion, and a future strict-model scoring route must verify a promoted-model and prediction manifest whose SHA-256 seal predates target scoring.
 
 The XGBoost hyperparameters were kept fixed for the reported rerun, but they were chosen during prototyping on this same history. A production study should tune on a separate period or use nested time-series validation.
 

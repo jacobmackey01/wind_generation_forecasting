@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from wind_forecast.diagnostics import newey_west_t_stat
+from wind_forecast.diagnostics import build_forecast_diagnostics
 from wind_forecast.features import TARGET
 from wind_forecast.qa import markdown_table
 from wind_forecast.strategy import PUBLIC_RAMP_STRATEGY, RESIDUAL_STRATEGY, TOTAL_NET_PNL
@@ -82,6 +82,7 @@ def write_case_study(
     strategy_metrics: pd.DataFrame | None = None,
     strategy_fold_metrics: pd.DataFrame | None = None,
     strategy_thresholds: pd.DataFrame | None = None,
+    forecast_diagnostics: pd.DataFrame | None = None,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -113,9 +114,14 @@ def write_case_study(
     best_skill_fold = xgb_fold_metrics.sort_values("skill_vs_smard_mae_pct", ascending=False).iloc[0]
     first_fold_start = str(xgb_fold_metrics["fold_start"].iloc[0])
     last_fold_end = str(xgb_fold_metrics["fold_end"].iloc[-1])
-    smard_abs_error = (predictions[TARGET] - predictions["smard_forecast"]).abs()
-    xgb_abs_error = (predictions[TARGET] - predictions["xgboost_residual"]).abs()
-    loss_diff_t = newey_west_t_stat(smard_abs_error - xgb_abs_error, max_lag=24)
+    diagnostics_frame = (
+        build_forecast_diagnostics(predictions, fold_metrics)
+        if forecast_diagnostics is None
+        else forecast_diagnostics
+    )
+    if len(diagnostics_frame) != 1:
+        raise ValueError("forecast_diagnostics must contain exactly one row.")
+    diagnostics = diagnostics_frame.iloc[0]
 
     metrics_for_doc = metrics.copy()
     for column in ["mae", "rmse", "bias", "skill_vs_smard_mae_pct"]:
@@ -330,7 +336,20 @@ def write_case_study(
         "",
         skill_sentence,
         "",
-        f"A simple Newey-West lag-24 t-stat on the hourly absolute-error loss differential is {_fmt(loss_diff_t, 2)}. This is included only as a sanity check, but it supports the same conclusion: the observed pooled improvement is noise, not a statistically robust edge.",
+        (
+            "The mean hourly absolute-error improvement is "
+            f"{_fmt(diagnostics['loss_diff_mean_mw'], 2)} MW. Its lag-24 Newey-West standard error is "
+            f"{_fmt(diagnostics['newey_west_loss_diff_se_mw'], 2)} MW, giving t = "
+            f"{_fmt(diagnostics['newey_west_loss_diff_t_stat'], 2)} and a normal 95% interval of "
+            f"[{_fmt(diagnostics['newey_west_loss_diff_ci_95_lower_mw'], 2)}, "
+            f"{_fmt(diagnostics['newey_west_loss_diff_ci_95_upper_mw'], 2)}] MW. Dividing by the fixed "
+            f"SMARD MAE gives an approximate skill interval of "
+            f"[{_fmt(diagnostics['newey_west_skill_ci_95_lower_pct'], 2)}, "
+            f"{_fmt(diagnostics['newey_west_skill_ci_95_upper_pct'], 2)}]%. A delivery-day block bootstrap gives "
+            f"[{_fmt(diagnostics['day_block_bootstrap_loss_diff_ci_95_lower_mw'], 2)}, "
+            f"{_fmt(diagnostics['day_block_bootstrap_loss_diff_ci_95_upper_mw'], 2)}] MW. Both intervals span zero, "
+            "so the data do not distinguish the small pooled improvement from no incremental edge."
+        ),
         "",
         f"The previous-week persistence MAE was {_fmt(persistence_row['mae'])} MW and the hour/month climatology MAE was {_fmt(climatology_row['mae'])} MW. The serious benchmark is SMARD: MAE {_fmt(smard_row['mae'])} MW versus XGBoost {_fmt(xgb_row['mae'])} MW. XGBoost beat SMARD in {fold_wins} of {fold_count} folds, but the fold dispersion is large enough that I would not claim a production edge from this evidence alone.",
         "",
@@ -356,6 +375,8 @@ def write_case_study(
         "The validation now spans summer, autumn, winter, and spring folds, but it is still only one annual cycle. I would not treat the result as seasonally robust until it is repeated over multiple years and distinct weather regimes.",
         "",
         "The current feature set is valid for a rolling 24-hour-ahead information set. It is not a true prompt/intraday model; once recent metered actuals are available, a previous-hour persistence benchmark should be tested and would likely be hard to beat. It is also not a strict day-ahead auction signal: the German day-ahead auction clears around D-1 noon, so 24-hour lagged actuals would be unavailable for some later delivery hours. The weather covariates are archived near-delivery forecast values rather than D-1 noon model-run snapshots, so they should be treated as post-auction for strict day-ahead trading. For a strict D-1 noon forecast, all lagged features and weather rows should be recomputed relative to the issue timestamp.",
+        "",
+        "The 2026-07-01 to 2026-09-30 prospective holdout remains unscored. The research CLI rejects any overlapping date range before ingestion, and a future strict-model scoring route must verify a promoted-model and prediction manifest whose SHA-256 seal predates target scoring.",
         "",
         "The XGBoost hyperparameters were kept fixed for the reported rerun, but they were chosen during prototyping on this same history. A production study should tune on a separate period or use nested time-series validation.",
         "",
