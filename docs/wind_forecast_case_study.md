@@ -4,7 +4,7 @@ Jacob Mackey
 
 ## Objective
 
-Build a clean, trading-relevant forecasting pipeline for German hourly wind generation. The model predicts actual onshore plus offshore wind generation and is evaluated against simple and market-relevant baselines using walk-forward validation.
+The project builds a forecasting pipeline for German hourly wind generation. It predicts actual onshore plus offshore wind generation and is evaluated against persistence, climatology, and public-forecast baselines using walk-forward validation.
 
 The intended use case is rolling 24-hour-ahead calibration of the public wind forecast. The information set is published forecasts plus observations and forecast errors that are at least 24 hours old relative to delivery. At true prompt or intraday horizons, recent metered actuals become available and a last-observation style benchmark would dominate this feature set.
 
@@ -77,7 +77,7 @@ This is a research backtest, not an executable exchange P&L claim: the entry pri
 
 The residual strategy looks positive on the simple hourly statistics, but it still needs clustered and out-of-sample validation: the 1.5 GW rule trades 8.9% of hours, has a 54.3% gross hit rate, earns 1.811 EUR/MWh after costs, and has a Sharpe-like score of 0.038. Per trade, the public SMARD forecast-ramp benchmark earns 20.791 EUR/MWh versus 1.811 EUR/MWh for the residual strategy. Total P&L over 1 MW hourly clips is 153,852.24 EUR versus 1,396.66 EUR, so the residual correction does not beat the public-only rule here. Simple hourly statistics are gross-hit-rate z-stat 2.41 and per-trade net-P&L t-stat 1.07, before clustered adjustment. Fold-level P&L is uneven: 6 of 12 folds are positive, with the best fold in Nov 2025 and the worst in Jan 2026. The full-sample 1 MW-clip P&L is 1,396.66 EUR, but Nov 2025 alone contributes 2,810.89 EUR; excluding that fold, the strategy loses 1,414.23 EUR over 679 trades (-2.083 EUR/MWh per trade).
 
-Threshold sensitivity is included to avoid pretending one hand-picked trigger tells the whole story.
+Threshold sensitivity shows how the result changes across the five-point trigger grid.
 
 | strategy | threshold_mw | trades | gross_hit_rate | avg_net_pnl_eur_mwh | total_net_pnl_eur_per_mw_clip | sharpe_like_per_trade | net_pnl_t_stat |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -98,7 +98,7 @@ The best residual threshold in this five-point grid is 500 MW, but that is a mul
 
 A programmatic OpenAI step reduces the manual work of translating deterministic validation outputs into a concise analyst review. It reads a compact evidence package from the QA, forecast, fold, strategy, and threshold CSVs, then uses the Responses API with a strict Pydantic output schema. Exact prompts, evidence, output, request metadata, and token usage are logged under `outputs/llm/`.
 
-The LLM is deliberately downstream-only: it cannot change the data, XGBoost forecast, signal, trade log, P&L, or validation metrics. Each generated finding must cite a supplied evidence ID, unknown IDs are rejected, and the displayed metric values are attached by deterministic code after generation. A SHA-256 fingerprint ties the review to the exact evidence snapshot. The resulting review is shown in Streamlit only when that fingerprint matches the current CSVs; the dashboard never calls the API on refresh.
+The LLM operates only after the deterministic pipeline: it cannot change the data, XGBoost forecast, signal, trade log, P&L, or validation metrics. Each generated finding must cite a supplied evidence ID, unknown IDs are rejected, and the displayed metric values are attached by deterministic code after generation. A SHA-256 fingerprint ties the review to the exact evidence snapshot. The resulting review is shown in Streamlit only when that fingerprint matches the current CSVs; the dashboard never calls the API on refresh.
 
 ## Limitations
 
@@ -110,4 +110,4 @@ The 2026-07-01 to 2026-09-30 prospective holdout remains unscored. The research 
 
 The XGBoost hyperparameters were kept fixed for the reported rerun, but they were chosen during prototyping on this same history. A production study should tune on a separate period or use nested time-series validation.
 
-Overall, this should be read as a validation-first research prototype rather than a production signal. The pipeline now closes the loop from forecast to backtest to trading-strategy support, but the trading result is threshold-sensitive, fold-concentrated, and benchmarked only with a paper price-surprise proxy. A deployable version would need a longer multi-year backtest, forecast-run/lead-time pinned weather inputs, explicit issue-time feature cuts, regional generation constraints, historical executable DA-to-intraday or imbalance price marks, realistic transaction costs, and hyperparameter tuning isolated from the evaluation window.
+Overall, this is a research prototype rather than a production signal. It covers forecasting, backtesting, and trading-strategy support, but the trading result is threshold-sensitive, fold-concentrated, and benchmarked only with a paper price-surprise proxy. A deployable version would need a longer multi-year backtest, forecast-run/lead-time pinned weather inputs, explicit issue-time feature cuts, regional generation constraints, historical executable DA-to-intraday or imbalance price marks, realistic transaction costs, and hyperparameter tuning isolated from the evaluation window.

@@ -60,7 +60,7 @@ The public-ramp benchmark remained unchanged on the common hours. Across the ext
 
 ## Interpretation
 
-The honest conclusion remains unchanged: XGBoost does not reliably beat the public forecast, and the residual strategy does not demonstrate statistically robust or executable P&L. June is useful because it adds another negative forecast fold and shows that a better-looking aggregate strategy result can be driven mostly by data revisions and refitting rather than new out-of-sample evidence.
+The conclusion remains unchanged: XGBoost does not reliably beat the public forecast, and the residual strategy does not demonstrate statistically robust or executable P&L. June is useful because it adds another negative forecast fold and shows that a better-looking aggregate strategy result can be driven mostly by data revisions and refitting rather than new out-of-sample evidence.
 
 For reproducible comparisons, future runs should preserve immutable dated raw-data snapshots and report both a fixed-overlap comparison and an appended-period comparison. A production trading test would also need issue-time-valid features and auction-to-intraday or imbalance settlement prices.
 
