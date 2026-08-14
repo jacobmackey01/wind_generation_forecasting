@@ -1,8 +1,8 @@
 # Germany Wind Generation Forecasting With XGBoost
 
-Prototype forecasting hourly German wind generation with public data, XGBoost, walk-forward validation, and a simple wind-to-price trading-signal backtest.
+This prototype forecasts hourly German wind generation with public data, XGBoost, walk-forward validation, and a simple wind-to-price trading-signal backtest.
 
-The project is deliberately built as a candidate-facing case-study repo: reproducible ingestion, QA checks, feature engineering, baselines, an XGBoost improved model, honest time-series validation, a trading-signal research layer, and a short written interpretation of where the model helps or fails.
+The repository documents data ingestion and QA, feature engineering, chronological validation of baselines and XGBoost, and a research-only trading-signal layer. The accompanying case study reports both the results and the limits of the approach.
 
 ## Frozen D-1 Specification
 
@@ -105,7 +105,7 @@ Streamlit displays the latest saved review as a downstream interpretation panel.
 
 ## Validation Dashboard
 
-The Streamlit dashboard is deliberately built around the negative result rather than a flattering model headline. It shows fold-level MAE against SMARD, the forecast significance diagnostic, cumulative strategy proxy P&L, the November concentration, threshold sensitivity, and the public forecast-ramp benchmark on the same evidence base. The large public-ramp result is presented as a diagnostic that the DA(t) minus DA(t-24) proxy rewards public-information repricing, not as evidence of a free executable edge.
+The Streamlit dashboard centers the negative result. It shows fold-level MAE against SMARD, the forecast significance diagnostic, cumulative strategy proxy P&L, the November concentration, threshold sensitivity, and the public forecast-ramp benchmark on the same evidence base. The large public-ramp result is presented as a diagnostic that the DA(t) minus DA(t-24) proxy rewards public-information repricing, not as evidence of a free executable edge.
 
 It runs from the compact tracked CSVs in `outputs/`, so a fresh clone can open the dashboard immediately. Re-running the pipeline refreshes those inputs before the dashboard is launched.
 
@@ -138,7 +138,7 @@ Running the pipeline writes:
 
 The GitHub repository tracks the reproducible code, docs, and compact QA/metric outputs. Large generated files such as the processed hourly dataset, full prediction table, submission CSV, full trade log, and figures are intentionally left as pipeline outputs rather than source-controlled assets.
 
-## Notes On Honesty
+## Interpretation Boundaries
 
 Strategy average P&L is reported in EUR/MWh per traded hour. Strategy total P&L is reported as EUR per 1 MW hourly clip, so the public-ramp benchmark and residual signal should be compared on per-trade economics before comparing aggregate totals with very different trade counts.
 
