@@ -5,8 +5,6 @@ import os
 import sys
 from pathlib import Path
 
-import pandas as pd
-from dotenv import load_dotenv
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,15 +13,7 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 os.environ.setdefault("MPLCONFIGDIR", str(ROOT / ".matplotlib"))
 
-from wind_forecast.features import add_features  # noqa: E402
-from wind_forecast.diagnostics import build_forecast_diagnostics  # noqa: E402
 from wind_forecast.holdout import HoldoutPolicyError, enforce_development_window  # noqa: E402
-from wind_forecast.models import WalkForwardConfig, validate_walk_forward  # noqa: E402
-from wind_forecast.qa import qa_checks, write_qa_report  # noqa: E402
-from wind_forecast.report import write_case_study, write_figures  # noqa: E402
-from wind_forecast.smard import build_smard_dataset  # noqa: E402
-from wind_forecast.strategy import backtest_wind_price_signal  # noqa: E402
-from wind_forecast.weather import build_weather_dataset  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
@@ -58,6 +48,18 @@ def main() -> None:
         enforce_development_window(args.start, args.end)
     except HoldoutPolicyError as exc:
         raise SystemExit(f"Holdout protection: {exc}") from exc
+
+    import pandas as pd
+    from dotenv import load_dotenv
+    from wind_forecast.diagnostics import build_forecast_diagnostics
+    from wind_forecast.features import add_features
+    from wind_forecast.models import WalkForwardConfig, validate_walk_forward
+    from wind_forecast.qa import qa_checks, write_qa_report
+    from wind_forecast.report import write_case_study, write_figures
+    from wind_forecast.smard import build_smard_dataset
+    from wind_forecast.strategy import backtest_wind_price_signal
+    from wind_forecast.weather import build_weather_dataset
+
     use_cache = not args.no_cache
     run_ai_review = not args.skip_llm_review
     if run_ai_review:

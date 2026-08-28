@@ -57,6 +57,10 @@ The July rerun pins the direct package versions in `requirements.txt`, including
 
 `outputs/forecast_diagnostics.csv` now records the mean hourly loss difference, lag-24 Newey-West standard error and 95% confidence interval, the corresponding approximate skill interval, and a delivery-day block-bootstrap interval. For the June reference run, both interval estimates span zero; the small pooled improvement is therefore not distinguishable from no incremental edge.
 
+[![Fold-level XGBoost MAE skill versus the SMARD wind forecast across twelve chronological folds, with seven positive and five negative folds](docs/assets/fold_skill_vs_smard.svg)](docs/wind_forecast_case_study.md)
+
+Figure: Across 8,615 out-of-sample hours, XGBoost showed pooled +0.34% skill versus SMARD. The Newey-West 95% skill interval (-2.91% to +3.60%) crosses zero; these are historical rolling-calibration results, not strict D-1 or prospective trading evidence. Regenerate the committed figure with `python scripts/generate_readme_figure.py`.
+
 ## Prospective Holdout Protection
 
 The 2026-07-01 to 2026-09-30 target period is mechanically locked. `scripts/run_pipeline.py` rejects any overlapping date range immediately after parsing arguments, before data ingestion, model fitting, target metrics, or an OpenAI call. This remains true after the embargo ends: the historical research pipeline is not the route for scoring the holdout.
@@ -136,7 +140,7 @@ Running the pipeline writes:
 - `docs/forecast_issue_time_specification.md`
 - `docs/wind_forecast_case_study.md`
 
-The GitHub repository tracks the reproducible code, docs, and compact QA/metric outputs. Large generated files such as the processed hourly dataset, full prediction table, submission CSV, full trade log, and figures are intentionally left as pipeline outputs rather than source-controlled assets.
+The GitHub repository tracks the reproducible code, docs, and compact QA/metric outputs. Large generated files such as the processed hourly dataset, full prediction table, submission CSV, full trade log, and exploratory pipeline figures under `outputs/figures/` remain generated outputs; the compact deterministic README summary figure under `docs/assets/` is committed.
 
 ## Notes On Honesty
 

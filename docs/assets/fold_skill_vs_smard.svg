@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="auto" viewBox="0 0 1200 780" role="img" aria-labelledby="figure-title figure-desc">
+<title id="figure-title">Fold-level XGBoost MAE skill versus the SMARD wind forecast</title>
+<desc id="figure-desc">12 chronological rolling-calibration folds. Seven folds improve and five worsen. Pooled skill is +0.34%, while the Newey-West 95 percent skill interval is -2.91% to +3.60% and crosses zero.</desc>
+<rect width="1200" height="780" fill="#fbfbf8"/>
+<text x="36.0" y="43.0" fill="#24313a" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="25px" font-weight="650" text-anchor="start">XGBoost residual calibration: fold-level MAE skill</text>
+<text x="36.0" y="70.0" fill="#647078" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="14px" font-weight="400" text-anchor="start">German wind | rolling-calibration reference through Jun 2026 | positive = lower MAE than SMARD</text>
+<line x1="36" y1="92" x2="1164" y2="92" stroke="#d9ddd9" stroke-width="1"/>
+<text x="36.0" y="126.0" fill="#24313a" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="16px" font-weight="650" text-anchor="start">Chronological fold skill</text>
+<text x="790.0" y="126.0" fill="#647078" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="13px" font-weight="400" text-anchor="end">7 improved | 5 worse</text>
+<line x1="820" y1="112" x2="820" y2="640" stroke="#d9ddd9" stroke-width="1"/>
+<text x="850.0" y="126.0" fill="#24313a" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="16px" font-weight="650" text-anchor="start">Pooled estimate and uncertainty</text>
+<line x1="315.0" y1="145.0" x2="315.0" y2="549.0" stroke="#e8ebe7" stroke-width="1.0"/>
+<text x="315.0" y="571.0" fill="#647078" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="400" text-anchor="middle">-20%</text>
+<line x1="410.0" y1="145.0" x2="410.0" y2="549.0" stroke="#e8ebe7" stroke-width="1.0"/>
+<text x="410.0" y="571.0" fill="#647078" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="400" text-anchor="middle">-10%</text>
+<line x1="505.0" y1="145.0" x2="505.0" y2="549.0" stroke="#24313a" stroke-width="1.5"/>
+<text x="505.0" y="571.0" fill="#647078" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="400" text-anchor="middle">0%</text>
+<line x1="600.0" y1="145.0" x2="600.0" y2="549.0" stroke="#e8ebe7" stroke-width="1.0"/>
+<text x="600.0" y="571.0" fill="#647078" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="400" text-anchor="middle">+10%</text>
+<line x1="695.0" y1="145.0" x2="695.0" y2="549.0" stroke="#e8ebe7" stroke-width="1.0"/>
+<text x="695.0" y="571.0" fill="#647078" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="400" text-anchor="middle">+20%</text>
+<text x="505.0" y="137.0" fill="#647078" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11px" font-weight="400" text-anchor="middle">zero reference</text>
+<text x="36.0" y="179.0" fill="#24313a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="400" text-anchor="start">F01 | Jul-Aug 2025</text>
+<rect x="367.6" y="165.5" width="137.4" height="17.0" fill="#a4776a"/>
+<text x="358.6" y="179.0" fill="#a4776a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="650" text-anchor="end">-14.5%</text>
+<text x="36.0" y="211.0" fill="#24313a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="400" text-anchor="start">F02 | Aug-Sep 2025</text>
+<rect x="505.0" y="197.5" width="20.3" height="17.0" fill="#3d7288"/>
+<text x="534.3" y="211.0" fill="#3d7288" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="650" text-anchor="start">+2.1%</text>
+<text x="36.0" y="243.0" fill="#24313a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="400" text-anchor="start">F03 | Sep-Oct 2025</text>
+<rect x="505.0" y="229.5" width="110.3" height="17.0" fill="#3d7288"/>
+<text x="624.3" y="243.0" fill="#3d7288" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="650" text-anchor="start">+11.6%</text>
+<text x="36.0" y="275.0" fill="#24313a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="400" text-anchor="start">F04 | Oct-Nov 2025</text>
+<rect x="253.8" y="261.5" width="251.2" height="17.0" fill="#a4776a"/>
+<text x="244.8" y="275.0" fill="#a4776a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="650" text-anchor="end">-26.4%</text>
+<text x="36.0" y="307.0" fill="#24313a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="400" text-anchor="start">F05 | Nov-Dec 2025</text>
+<rect x="505.0" y="293.5" width="29.7" height="17.0" fill="#3d7288"/>
+<text x="543.7" y="307.0" fill="#3d7288" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="650" text-anchor="start">+3.1%</text>
+<text x="36.0" y="339.0" fill="#24313a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="400" text-anchor="start">F06 | Dec 2025-Jan 2026</text>
+<rect x="505.0" y="325.5" width="126.3" height="17.0" fill="#3d7288"/>
+<text x="640.3" y="339.0" fill="#3d7288" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="650" text-anchor="start">+13.3%</text>
+<text x="36.0" y="371.0" fill="#24313a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="400" text-anchor="start">F07 | Jan-Feb 2026</text>
+<rect x="389.8" y="357.5" width="115.2" height="17.0" fill="#a4776a"/>
+<text x="380.8" y="371.0" fill="#a4776a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="650" text-anchor="end">-12.1%</text>
+<text x="36.0" y="403.0" fill="#24313a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="400" text-anchor="start">F08 | Feb-Mar 2026</text>
+<rect x="505.0" y="389.5" width="110.1" height="17.0" fill="#3d7288"/>
+<text x="624.1" y="403.0" fill="#3d7288" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="650" text-anchor="start">+11.6%</text>
+<text x="36.0" y="435.0" fill="#24313a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="400" text-anchor="start">F09 | Mar-Apr 2026</text>
+<rect x="505.0" y="421.5" width="65.2" height="17.0" fill="#3d7288"/>
+<text x="579.2" y="435.0" fill="#3d7288" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="650" text-anchor="start">+6.9%</text>
+<text x="36.0" y="467.0" fill="#24313a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="400" text-anchor="start">F10 | Apr-May 2026</text>
+<rect x="505.0" y="453.5" width="51.9" height="17.0" fill="#3d7288"/>
+<text x="565.9" y="467.0" fill="#3d7288" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="650" text-anchor="start">+5.5%</text>
+<text x="36.0" y="499.0" fill="#24313a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="400" text-anchor="start">F11 | May-Jun 2026</text>
+<rect x="472.4" y="485.5" width="32.6" height="17.0" fill="#a4776a"/>
+<text x="463.4" y="499.0" fill="#a4776a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="650" text-anchor="end">-3.4%</text>
+<text x="36.0" y="531.0" fill="#24313a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="400" text-anchor="start">F12 | Jun 2026</text>
+<rect x="472.1" y="517.5" width="32.9" height="17.0" fill="#a4776a"/>
+<text x="463.1" y="531.0" fill="#a4776a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="650" text-anchor="end">-3.5%</text>
+<text x="505.0" y="599.0" fill="#647078" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="13px" font-weight="400" text-anchor="middle">MAE skill versus SMARD forecast (%)</text>
+<text x="850.0" y="163.0" fill="#647078" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="13px" font-weight="400" text-anchor="start">95% skill interval</text>
+<line x1="850.0" y1="202.0" x2="1160.0" y2="202.0" stroke="#e8ebe7" stroke-width="1"/>
+<line x1="1005.0" y1="183.0" x2="1005.0" y2="221.0" stroke="#24313a" stroke-width="1.5"/>
+<line x1="892.1" y1="202.0" x2="1144.5" y2="202.0" stroke="#24313a" stroke-width="2"/>
+<line x1="892.1" y1="194.0" x2="892.1" y2="210.0" stroke="#24313a" stroke-width="2"/>
+<line x1="1144.5" y1="194.0" x2="1144.5" y2="210.0" stroke="#24313a" stroke-width="2"/>
+<circle cx="1018.3" cy="202.0" r="6" fill="#fbfbf8" stroke="#24313a" stroke-width="2"/>
+<text x="892.1" y="234.0" fill="#24313a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="400" text-anchor="middle">-2.91%</text>
+<text x="1144.5" y="234.0" fill="#24313a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="400" text-anchor="middle">+3.60%</text>
+<text x="1005.0" y="175.0" fill="#647078" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="11px" font-weight="400" text-anchor="middle">0%</text>
+<text x="850.0" y="282.0" fill="#24313a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="29px" font-weight="650" text-anchor="start">+0.34%</text>
+<text x="850.0" y="303.0" fill="#647078" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="13px" font-weight="400" text-anchor="start">pooled skill vs SMARD</text>
+<line x1="850" y1="322" x2="1160" y2="322" stroke="#d9ddd9" stroke-width="1"/>
+<text x="850.0" y="349.0" fill="#647078" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="13px" font-weight="400" text-anchor="start">XGBoost MAE</text>
+<text x="1160.0" y="349.0" fill="#24313a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="14px" font-weight="650" text-anchor="end">1,384.67 MW</text>
+<text x="850.0" y="380.0" fill="#647078" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="13px" font-weight="400" text-anchor="start">SMARD forecast MAE</text>
+<text x="1160.0" y="380.0" fill="#24313a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="14px" font-weight="650" text-anchor="end">1,389.44 MW</text>
+<text x="850.0" y="411.0" fill="#647078" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="13px" font-weight="400" text-anchor="start">Out-of-sample hours</text>
+<text x="1160.0" y="411.0" fill="#24313a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="14px" font-weight="650" text-anchor="end">8,615</text>
+<text x="850.0" y="442.0" fill="#647078" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="13px" font-weight="400" text-anchor="start">Folds improved</text>
+<text x="1160.0" y="442.0" fill="#24313a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="14px" font-weight="650" text-anchor="end">7 / 12</text>
+<line x1="850" y1="464" x2="1160" y2="464" stroke="#d9ddd9" stroke-width="1"/>
+<text x="850.0" y="490.0" fill="#647078" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12px" font-weight="400" text-anchor="start">Day-block bootstrap skill interval</text>
+<text x="1160.0" y="490.0" fill="#24313a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="650" text-anchor="end">-2.94% to +3.62%</text>
+<text x="850.0" y="522.0" fill="#647078" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12px" font-weight="400" text-anchor="start">Mean fold skill</text>
+<text x="1160.0" y="522.0" fill="#24313a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="650" text-anchor="end">-0.49%</text>
+<text x="850.0" y="553.0" fill="#647078" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="400" text-anchor="start">Best fold: F06 +13.30%</text>
+<text x="850.0" y="578.0" fill="#647078" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12px" font-weight="400" text-anchor="start">Worst fold: F04 -26.44%</text>
+<line x1="36" y1="650" x2="1164" y2="650" stroke="#d9ddd9" stroke-width="1"/>
+<text x="36.0" y="680.0" fill="#24313a" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="14px" font-weight="550" text-anchor="start">Interpretation: Average error was marginally lower, but the interval crosses zero and results were inconsistent across folds.</text>
+<text x="36.0" y="708.0" fill="#647078" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12px" font-weight="400" text-anchor="start">Pooled skill uses aggregate MAEs, not the mean of fold percentages (mean fold skill -0.49%).</text>
+<text x="36.0" y="739.0" fill="#647078" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11px" font-weight="400" text-anchor="start">Historical rolling-calibration reference only. Inputs are not publication-vintage controlled to the frozen 11:00 D-1 auction gate; this is not prospective accuracy or trading evidence.</text>
+</svg>
